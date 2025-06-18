@@ -1,14 +1,14 @@
 # Web Stats Monitor
 
-A Python script that monitors web page statistics every second and saves the data to a CSV file.
+A Python tool that monitors web page statistics and displays them in your macOS menu bar.
 
 ## Features
 
-- Monitors webpage metrics (visitors, original posts, followers, following) in real-time
-- Records data every second (configurable)
-- Saves data to CSV for later analysis
-- Works with CSDN user profiles by default
+- Monitors webpage metrics from CSDN and Toutiao platforms
+- Displays follower counts in the macOS menu bar with automatic rotation
+- Records data to CSV files for later analysis
 - Uses DrissionPage for browser automation (no Selenium dependency)
+- Provides easy access through a system menu bar icon
 
 ## Installation
 
@@ -21,32 +21,50 @@ pip install -r requirements.txt
 
 ## Usage
 
-Run the script:
+### Command Line Usage
+
+Run the script to fetch data once:
 
 ```
 python get_fans.py
 ```
 
-When prompted, enter the URL of the page you want to monitor.
-
-The script will:
-- Open a Chrome browser window
-- Navigate to the provided URL
-- Extract visitor count, original post count, follower count, and following count every second
+This will:
+- Connect to CSDN and Toutiao platforms
+- Extract visitor count, original post count, follower counts, etc.
 - Print the data to the console
-- Save the data to a CSV file named `fan_data.csv`
+- Save the data to CSV files (`csdn_stats.csv` and `toutiao_stats.csv`)
 
-Press Ctrl+C to stop the monitoring.
+### Menu Bar Application
+
+To display stats in your macOS menu bar, run:
+
+```
+python menu_bar_app.py
+```
+
+This will:
+- Create a menu bar icon in your macOS status bar (📊)
+- Automatically fetch data from both platforms
+- Display the follower counts for CSDN and Toutiao, rotating between them
+- Allow you to manually update data through the menu
+- Save data to the same CSV files
+
+#### Menu Bar Options
+
+- **更新数据**: Manually update the statistics from both platforms
+- **退出**: Quit the menu bar application
 
 ## Customization
 
-- To run the browser in headless mode, set `co.headless = True` in the `setup_browser()` function
-- To change the monitoring interval, modify the `interval` parameter in the `monitor_page()` function call
-- To run for a specific duration, add a `duration` parameter to the `monitor_page()` function call
+- To change the user URLs, edit the URL variables in the scripts
+- To change the rotation interval, modify the `rotation_interval` value in the `StatisticsMenuBarApp` class
+- To change the update frequency, modify the sleep duration in the `collect_data_periodically` method
 
 ## Requirements
 
 - Python 3.6+
+- macOS (for menu bar application)
 - Chrome browser
 - Internet connection
 

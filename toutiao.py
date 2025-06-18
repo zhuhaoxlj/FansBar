@@ -16,9 +16,9 @@ import random
 from bs4 import BeautifulSoup
 import datetime
 
-def parse_toutiao_user_stats(url: str):
+def init_browser():
     """
-    使用DrissionPage获取头条用户页面并解析用户数据
+    初始化并返回浏览器实例
     """
     # 第一部分：配置浏览器选项
     co = ChromiumOptions()
@@ -51,24 +51,36 @@ def parse_toutiao_user_stats(url: str):
     co.set_pref("profile.password_manager_enabled", False)
     co.auto_port(True)
 
-    # 如果要使用无头模式，需要模拟真实浏览器
-    # 方案1: 使用新的无头模式(需要较新版本Chrome)
-    # co.set_argument("--headless=new")
-
-    # 方案2: 使用传统无头模式但添加伪装，uncomment下面这段开启无头模式
-    """
-    co.headless(True)
-    co.set_argument("--no-sandbox")
-    co.set_argument("--disable-setuid-sandbox")
-    co.set_argument("--ignore-certificate-errors")
-    co.set_argument("--window-size=1920,1080")
-    co.set_argument("--start-maximized")
-    """
-
     try:
-        # 第二部分：启动浏览器
         print("正在启动浏览器...")
         page = ChromiumPage(co)
+        return page
+    except Exception as e:
+        print(f"启动浏览器时出错: {e}")
+        import traceback
+        print(traceback.format_exc())
+        return None
+
+def parse_toutiao_user_stats(url: str, page=None):
+    """
+    使用DrissionPage获取头条用户页面并解析用户数据
+    
+    参数:
+        url: 头条用户页面URL
+        page: 已初始化的ChromiumPage实例，如果为None则创建新实例
+        
+    返回:
+        dict: 包含用户数据的字典
+    """
+    browser_created_here = False
+    
+    try:
+        # 如果没有传入浏览器实例，创建新实例
+        if page is None:
+            page = init_browser()
+            browser_created_here = True
+            if page is None:
+                return None
 
         print("正在访问头条用户页面...")
         # 访问页面
@@ -224,13 +236,14 @@ def parse_toutiao_user_stats(url: str):
         print(traceback.format_exc())
         return None
     finally:
-        # 关闭浏览器
-        try:
-            if 'page' in locals() and page:
-                page.quit()
-                print("浏览器已关闭！")
-        except:
-            pass
+        # 只有当browser是在这个函数中创建的时候才关闭它
+        if browser_created_here:
+            try:
+                if 'page' in locals() and page:
+                    page.quit()
+                    print("浏览器已关闭！")
+            except:
+                pass
 
 
 if __name__ == "__main__":

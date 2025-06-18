@@ -12,7 +12,7 @@ import os
 import csv
 from datetime import datetime
 from csdn import extract_csdn_stats
-from toutiao import parse_toutiao_user_stats
+from toutiao import parse_toutiao_user_stats, init_browser
 
 def load_config():
     """从配置文件加载URL"""
@@ -87,6 +87,10 @@ class StatisticsMenuBarApp(rumps.App):
         self.menu.add("更新数据")
         # 不添加退出选项，因为rumps已经默认添加了一个
         
+        # 初始化浏览器实例
+        self.browser = None
+        self.init_browser()
+        
         # Start data collection thread
         self.data_thread = threading.Thread(target=self.collect_data_periodically)
         self.data_thread.daemon = True
@@ -96,6 +100,18 @@ class StatisticsMenuBarApp(rumps.App):
         self.display_thread = threading.Thread(target=self.rotate_display)
         self.display_thread.daemon = True
         self.display_thread.start()
+    
+    def init_browser(self):
+        """初始化浏览器实例"""
+        try:
+            self.browser = init_browser()
+            if self.browser:
+                print("浏览器初始化成功")
+            else:
+                print("浏览器初始化失败")
+        except Exception as e:
+            print(f"初始化浏览器时出错: {e}")
+            self.browser = None
     
     def toggle_focus_mode(self, sender):
         """切换专注模式"""
@@ -147,9 +163,30 @@ class StatisticsMenuBarApp(rumps.App):
             
             # Toutiao data
             toutiao_url = self.config.get("TOUTIAO_URL")
-            self.toutiao_data = parse_toutiao_user_stats(toutiao_url)
+            
+            # 检查浏览器实例是否可用，如果不可用则重新初始化
+            if self.browser is None:
+                self.init_browser()
+                
+            # 使用持久化的浏览器实例获取头条数据
+            self.toutiao_data = parse_toutiao_user_stats(toutiao_url, self.browser)
+            
             if self.toutiao_data:
                 print(f"[头条] 粉丝数: {self.toutiao_data['fans']}")
+            else:
+                print("获取头条数据失败，尝试重新初始化浏览器")
+                # 如果获取数据失败，尝试重新初始化浏览器
+                if self.browser:
+                    try:
+                        self.browser.quit()
+                    except:
+                        pass
+                self.init_browser()
+                if self.browser:
+                    # 再次尝试获取数据
+                    self.toutiao_data = parse_toutiao_user_stats(toutiao_url, self.browser)
+                    if self.toutiao_data:
+                        print(f"[头条] 粉丝数: {self.toutiao_data['fans']}")
             
             # Update menu items with new data
             self.update_menu_items()
@@ -195,6 +232,19 @@ class StatisticsMenuBarApp(rumps.App):
             rumps.notification("数据更新", "统计数据", "正在更新数据，请稍等...")
         except Exception as e:
             print(f"无法显示通知: {e}")
+    
+    def run(self):
+        """运行应用，并处理退出清理"""
+        try:
+            super(StatisticsMenuBarApp, self).run()
+        finally:
+            # 应用退出时关闭浏览器
+            if self.browser:
+                try:
+                    print("应用退出，关闭浏览器...")
+                    self.browser.quit()
+                except Exception as e:
+                    print(f"关闭浏览器时出错: {e}")
 
 if __name__ == "__main__":
     StatisticsMenuBarApp().run()

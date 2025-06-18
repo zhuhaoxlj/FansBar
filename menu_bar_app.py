@@ -27,8 +27,38 @@ class StatisticsMenuBarApp(rumps.App):
         self.current_display = "csdn"  # Start with CSDN
         self.rotation_interval = 5  # Seconds to display each platform
         
+        # Initialize detailed menu items
+        self.csdn_details_menu = rumps.MenuItem("CSDN详细数据")
+        self.csdn_visitors_item = rumps.MenuItem("访问量: 加载中...")
+        self.csdn_originals_item = rumps.MenuItem("原创: 加载中...")
+        self.csdn_followers_item = rumps.MenuItem("粉丝: 加载中...")
+        self.csdn_following_item = rumps.MenuItem("关注: 加载中...")
+        
+        self.toutiao_details_menu = rumps.MenuItem("头条详细数据")
+        self.toutiao_likes_item = rumps.MenuItem("获赞: 加载中...")
+        self.toutiao_fans_item = rumps.MenuItem("粉丝: 加载中...")
+        self.toutiao_follows_item = rumps.MenuItem("关注: 加载中...")
+        
+        # Add items to submenus
+        self.csdn_details_menu.add(self.csdn_visitors_item)
+        self.csdn_details_menu.add(self.csdn_originals_item)
+        self.csdn_details_menu.add(self.csdn_followers_item)
+        self.csdn_details_menu.add(self.csdn_following_item)
+        
+        self.toutiao_details_menu.add(self.toutiao_likes_item)
+        self.toutiao_details_menu.add(self.toutiao_fans_item)
+        self.toutiao_details_menu.add(self.toutiao_follows_item)
+        
         # Configure menu
-        self.menu = ["更新数据", None, "退出"]
+        self.menu.clear()
+        self.menu = [
+            self.csdn_details_menu,
+            self.toutiao_details_menu,
+            None,  # Separator
+            "更新数据",
+            None,  # Separator
+            "退出"
+        ]
         
         # Start data collection thread
         self.data_thread = threading.Thread(target=self.collect_data_periodically)
@@ -51,6 +81,19 @@ class StatisticsMenuBarApp(rumps.App):
                 self.current_display = "csdn"
             time.sleep(self.rotation_interval)
     
+    def update_menu_items(self):
+        """Update the menu items with current data"""
+        if self.csdn_data:
+            self.csdn_visitors_item.title = f"访问量: {self.csdn_data['visitors']}"
+            self.csdn_originals_item.title = f"原创: {self.csdn_data['originals']}"
+            self.csdn_followers_item.title = f"粉丝: {self.csdn_data['followers']}"
+            self.csdn_following_item.title = f"关注: {self.csdn_data['following']}"
+            
+        if self.toutiao_data:
+            self.toutiao_likes_item.title = f"获赞: {self.toutiao_data['likes']}"
+            self.toutiao_fans_item.title = f"粉丝: {self.toutiao_data['fans']}"
+            self.toutiao_follows_item.title = f"关注: {self.toutiao_data['follows']}"
+    
     def collect_data(self):
         """Collect data from both platforms"""
         try:
@@ -63,14 +106,26 @@ class StatisticsMenuBarApp(rumps.App):
             if self.toutiao_data:
                 print(f"[头条] 粉丝数: {self.toutiao_data['fans']}")
             
+            # Update menu items with new data
+            self.update_menu_items()
+            
             # Update title immediately after collection
             if self.current_display == "csdn" and self.csdn_data:
                 self.title = f"CSDN: {self.csdn_data['followers']}"
             elif self.current_display == "toutiao" and self.toutiao_data:
                 self.title = f"头条: {self.toutiao_data['fans']}"
             
+            # Show notification when data is updated
+            rumps.notification(
+                title="数据已更新", 
+                subtitle="粉丝统计", 
+                message=f"CSDN: {self.csdn_data['followers']} 粉丝, 头条: {self.toutiao_data['fans'] if self.toutiao_data else '未知'} 粉丝"
+            )
+            
         except Exception as e:
             print(f"Error collecting data: {e}")
+            import traceback
+            print(traceback.format_exc())
     
     def collect_data_periodically(self):
         """Collect data periodically"""
@@ -93,4 +148,4 @@ class StatisticsMenuBarApp(rumps.App):
         rumps.quit_application()
 
 if __name__ == "__main__":
-    StatisticsMenuBarApp().run() 
+    StatisticsMenuBarApp().run()

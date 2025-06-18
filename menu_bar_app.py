@@ -49,16 +49,13 @@ class StatisticsMenuBarApp(rumps.App):
         self.toutiao_details_menu.add(self.toutiao_fans_item)
         self.toutiao_details_menu.add(self.toutiao_follows_item)
         
-        # Configure menu
-        self.menu.clear()
-        self.menu = [
-            self.csdn_details_menu,
-            self.toutiao_details_menu,
-            None,  # Separator
-            "更新数据",
-            None,  # Separator
-            "退出"
-        ]
+        # Configure menu - 完全清除默认菜单并使用我们自己的菜单项
+        self.menu.clear()  # 清除默认菜单
+        self.menu.add(self.csdn_details_menu)
+        self.menu.add(self.toutiao_details_menu)
+        self.menu.add(None)  # 分隔符
+        self.menu.add("更新数据")
+        # 不添加退出选项，因为rumps已经默认添加了一个
         
         # Start data collection thread
         self.data_thread = threading.Thread(target=self.collect_data_periodically)
@@ -148,11 +145,6 @@ class StatisticsMenuBarApp(rumps.App):
             rumps.notification("数据更新", "统计数据", "正在更新数据，请稍等...")
         except Exception as e:
             print(f"无法显示通知: {e}")
-    
-    @rumps.clicked("退出")
-    def quit_app(self, _):
-        """Quit the application"""
-        rumps.quit_application()
 
 if __name__ == "__main__":
     StatisticsMenuBarApp().run()

@@ -34,21 +34,26 @@ def read_csv_data(file_path):
                         values.append(row[3])  # CSDN 粉丝数在第四列
                     elif 'toutiao' in file_path.lower():
                         values.append(row[2])  # 头条粉丝数在第三列
+                    elif 'juejin' in file_path.lower():
+                        values.append(row[4])  # 掘金粉丝数在第五列
+                    elif 'zhihu' in file_path.lower():
+                        values.append(row[5])  # 知乎粉丝数在第六列
     except Exception as e:
         print(f"读取 {file_path} 时出错: {e}")
         
     return timestamps, values
 
-def generate_html(csdn_data, toutiao_data, juejin_data):
+def generate_html(csdn_data, toutiao_data, juejin_data, zhihu_data):
     """生成包含 echarts 图表的 HTML 页面"""
     
     # 提取数据
     csdn_timestamps, csdn_values = csdn_data
     toutiao_timestamps, toutiao_values = toutiao_data
     juejin_timestamps, juejin_values = juejin_data
+    zhihu_timestamps, zhihu_values = zhihu_data
     
-    # 为了保持图表数据的完整性，找到两个数据集的最早和最晚的时间戳
-    all_timestamps = csdn_timestamps + toutiao_timestamps + juejin_timestamps
+    # 为了保持图表数据的完整性，找到所有数据集的时间戳
+    all_timestamps = csdn_timestamps + toutiao_timestamps + juejin_timestamps + zhihu_timestamps
     
     # 如果没有数据，返回错误提示页面
     if not all_timestamps:
@@ -84,20 +89,33 @@ def generate_html(csdn_data, toutiao_data, juejin_data):
             juejin_data_pairs.append([dt.strftime("%Y-%m-%d %H:%M:%S"), value])
         except (ValueError, IndexError):
             continue
+            
+    zhihu_data_pairs = []
+    for i, ts in enumerate(zhihu_timestamps):
+        try:
+            # 解析时间戳
+            dt = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
+            value = int(zhihu_values[i]) if zhihu_values[i].isdigit() else 0
+            zhihu_data_pairs.append([dt.strftime("%Y-%m-%d %H:%M:%S"), value])
+        except (ValueError, IndexError):
+            continue
     
     # 计算百分比变化（基于所有数据）
     csdn_values_int = [pair[1] for pair in csdn_data_pairs]
     toutiao_values_int = [pair[1] for pair in toutiao_data_pairs]
     juejin_values_int = [pair[1] for pair in juejin_data_pairs]
+    zhihu_values_int = [pair[1] for pair in zhihu_data_pairs]
     
     csdn_change = calculate_change(csdn_values_int)
     toutiao_change = calculate_change(toutiao_values_int)
     juejin_change = calculate_change(juejin_values_int)
+    zhihu_change = calculate_change(zhihu_values_int)
     
     # 准备 echarts 数据
     csdn_data_json = json.dumps(csdn_data_pairs)
     toutiao_data_json = json.dumps(toutiao_data_pairs)
     juejin_data_json = json.dumps(juejin_data_pairs)
+    zhihu_data_json = json.dumps(zhihu_data_pairs)
     
     # 生成 HTML
     html = f"""
@@ -248,625 +266,512 @@ def generate_html(csdn_data, toutiao_data, juejin_data):
 <body>
     <div class="container">
         <div class="header">
-            <h1>粉丝数据分析报告</h1>
-            <p>数据更新时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+            <h1>平台粉丝数据分析</h1>
+            <p>数据更新时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
         </div>
         
         <div class="stats-container">
             <div class="stat-card">
-                <div class="stat-title">CSDN 当前粉丝数</div>
+                <div class="stat-title">CSDN 粉丝</div>
                 <div class="stat-value">{csdn_values_int[-1] if csdn_values_int else 'N/A'}</div>
-                <div class="stat-change {get_change_class(csdn_change)}">
-                    {format_change(csdn_change)}
-                </div>
+                <div class="stat-change {get_change_class(csdn_change)}">{format_change(csdn_change)}</div>
             </div>
             <div class="stat-card">
-                <div class="stat-title">头条 当前粉丝数</div>
+                <div class="stat-title">头条粉丝</div>
                 <div class="stat-value">{toutiao_values_int[-1] if toutiao_values_int else 'N/A'}</div>
-                <div class="stat-change {get_change_class(toutiao_change)}">
-                    {format_change(toutiao_change)}
-                </div>
+                <div class="stat-change {get_change_class(toutiao_change)}">{format_change(toutiao_change)}</div>
             </div>
             <div class="stat-card">
-                <div class="stat-title">JueJin 当前粉丝数</div>
+                <div class="stat-title">掘金粉丝</div>
                 <div class="stat-value">{juejin_values_int[-1] if juejin_values_int else 'N/A'}</div>
-                <div class="stat-change {get_change_class(juejin_change)}">
-                    {format_change(juejin_change)}
-                </div>
+                <div class="stat-change {get_change_class(juejin_change)}">{format_change(juejin_change)}</div>
             </div>
             <div class="stat-card">
-                <div class="stat-title">CSDN 数据点</div>
-                <div class="stat-value">{len(csdn_values_int)}</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-title">头条 数据点</div>
-                <div class="stat-value">{len(toutiao_values_int)}</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-title">JueJin 数据点</div>
-                <div class="stat-value">{len(juejin_values_int)}</div>
+                <div class="stat-title">知乎粉丝</div>
+                <div class="stat-value">{zhihu_values_int[-1] if zhihu_values_int else 'N/A'}</div>
+                <div class="stat-change {get_change_class(zhihu_change)}">{format_change(zhihu_change)}</div>
             </div>
         </div>
-        
+
         <div class="card">
-            <div class="time-filter" id="combinedTimeFilter">
-                <button class="time-btn active" data-range="all">所有数据</button>
-                <button class="time-btn" data-range="month">近一月</button>
-                <button class="time-btn" data-range="week">近一周</button>
-                <button class="time-btn" data-range="3days">近三天</button>
-                <button class="time-btn" data-range="today">今日</button>
+            <div class="time-filter">
+                <button class="time-btn active" data-days="7">7天</button>
+                <button class="time-btn" data-days="30">30天</button>
+                <button class="time-btn" data-days="90">90天</button>
+                <button class="time-btn" data-days="180">180天</button>
+                <button class="time-btn" data-days="365">1年</button>
+                <button class="time-btn" data-days="0">全部</button>
             </div>
-            <div class="combined-chart" id="combinedChart"></div>
+            <div id="combined-chart" class="combined-chart"></div>
         </div>
         
         <div class="charts-container">
             <div class="chart-card">
-                <div class="time-filter" id="csdnTimeFilter">
-                    <button class="time-btn active" data-range="all">所有数据</button>
-                    <button class="time-btn" data-range="month">近一月</button>
-                    <button class="time-btn" data-range="week">近一周</button>
-                    <button class="time-btn" data-range="3days">近三天</button>
-                    <button class="time-btn" data-range="today">今日</button>
-                </div>
-                <div class="chart" id="csdnChart"></div>
+                <h3>CSDN粉丝趋势</h3>
+                <div id="csdn-chart" class="chart"></div>
             </div>
             <div class="chart-card">
-                <div class="time-filter" id="toutiaoTimeFilter">
-                    <button class="time-btn active" data-range="all">所有数据</button>
-                    <button class="time-btn" data-range="month">近一月</button>
-                    <button class="time-btn" data-range="week">近一周</button>
-                    <button class="time-btn" data-range="3days">近三天</button>
-                    <button class="time-btn" data-range="today">今日</button>
-                </div>
-                <div class="chart" id="toutiaoChart"></div>
+                <h3>头条粉丝趋势</h3>
+                <div id="toutiao-chart" class="chart"></div>
             </div>
             <div class="chart-card">
-                <div class="time-filter" id="juejinTimeFilter">
-                    <button class="time-btn active" data-range="all">所有数据</button>
-                    <button class="time-btn" data-range="month">近一月</button>
-                    <button class="time-btn" data-range="week">近一周</button>
-                    <button class="time-btn" data-range="3days">近三天</button>
-                    <button class="time-btn" data-range="today">今日</button>
-                </div>
-                <div class="chart" id="juejinChart"></div>
+                <h3>掘金粉丝趋势</h3>
+                <div id="juejin-chart" class="chart"></div>
+            </div>
+            <div class="chart-card">
+                <h3>知乎粉丝趋势</h3>
+                <div id="zhihu-chart" class="chart"></div>
             </div>
         </div>
-        
+
         <div class="footer">
-            <p>© {datetime.now().year} 粉丝数据分析工具 - 自动生成</p>
+            <p>© {datetime.now().year} 粉丝数据分析工具 | 由 Python 与 ECharts 强力驱动</p>
         </div>
     </div>
 
     <script>
-        // 所有原始数据
-        var csdnData = {csdn_data_json};
-        var toutiaoData = {toutiao_data_json};
-        var juejinData = {juejin_data_json};
+        // 解析数据
+        const csdnData = {csdn_data_json};
+        const toutiaoData = {toutiao_data_json};
+        const juejinData = {juejin_data_json};
+        const zhihuData = {zhihu_data_json};
         
         // 初始化图表
-        var csdnChart = echarts.init(document.getElementById('csdnChart'));
-        var toutiaoChart = echarts.init(document.getElementById('toutiaoChart'));
-        var juejinChart = echarts.init(document.getElementById('juejinChart'));
-        var combinedChart = echarts.init(document.getElementById('combinedChart'));
+        const csdnChart = echarts.init(document.getElementById('csdn-chart'));
+        const toutiaoChart = echarts.init(document.getElementById('toutiao-chart'));
+        const juejinChart = echarts.init(document.getElementById('juejin-chart'));
+        const zhihuChart = echarts.init(document.getElementById('zhihu-chart'));
+        const combinedChart = echarts.init(document.getElementById('combined-chart'));
         
-        // 根据时间范围筛选数据
-        function filterDataByRange(data, range) {{
-            if (range === 'all') {{
-                return data;
-            }}
-            
-            var now = new Date();
-            var cutoffDate = new Date();
-            
-            switch(range) {{
-                case 'today':
-                    cutoffDate.setHours(0, 0, 0, 0);
-                    break;
-                case '3days':
-                    cutoffDate.setDate(now.getDate() - 3);
-                    break;
-                case 'week':
-                    cutoffDate.setDate(now.getDate() - 7);
-                    break;
-                case 'month':
-                    cutoffDate.setMonth(now.getMonth() - 1);
-                    break;
-            }}
-            
-            return data.filter(function(item) {{
-                var itemDate = new Date(item[0]);
-                return itemDate >= cutoffDate;
-            }});
-        }}
-        
-        // 绘制CSDN图表
-        function drawCSDNChart(range) {{
-            var filteredData = filterDataByRange(csdnData, range);
-            
-            if (filteredData.length === 0) {{
-                // 如果筛选后没有数据，显示提示信息
-                csdnChart.setOption({{
-                    title: {{
-                        text: 'CSDN 粉丝趋势 - 选定时间段无数据',
-                        left: 'center'
+        // 设置CSDN图表
+        csdnChart.setOption({{
+            title: {{
+                text: 'CSDN粉丝数趋势',
+                left: 'center',
+                textStyle: {{
+                    fontSize: 16
+                }}
+            }},
+            tooltip: {{
+                trigger: 'axis',
+                formatter: function(params) {{
+                    const date = new Date(params[0].value[0]);
+                    const formattedDate = `${{date.getFullYear()}}-${{(date.getMonth()+1).toString().padStart(2, '0')}}-${{date.getDate().toString().padStart(2, '0')}} ${{date.getHours().toString().padStart(2, '0')}}:${{date.getMinutes().toString().padStart(2, '0')}}`;
+                    return `${{formattedDate}}<br/>粉丝数: ${{params[0].value[1]}}`;
+                }}
+            }},
+            xAxis: {{
+                type: 'time',
+                splitLine: {{
+                    show: false
+                }}
+            }},
+            yAxis: {{
+                type: 'value',
+                nameLocation: 'end',
+                splitLine: {{
+                    show: true,
+                    lineStyle: {{
+                        type: 'dashed',
+                        color: '#DDD'
+                    }}
+                }}
+            }},
+            series: [
+                {{
+                    name: 'CSDN粉丝',
+                    type: 'line',
+                    data: csdnData,
+                    showSymbol: false,
+                    smooth: true,
+                    lineStyle: {{
+                        width: 3,
+                        color: '#4e79a7'
                     }},
-                    graphic: [
-                        {{
-                            type: 'text',
-                            left: 'center',
-                            top: 'middle',
-                            style: {{
-                                text: '选定的时间段内没有数据',
-                                fontSize: 20,
-                                fill: '#999'
-                            }}
-                        }}
-                    ]
-                }});
-                return;
-            }}
-            
-            var csdnOption = {{
-                title: {{
-                    text: 'CSDN 粉丝趋势',
-                    left: 'center'
-                }},
-                tooltip: {{
-                    trigger: 'axis',
-                    formatter: function(params) {{
-                        var date = new Date(params[0].value[0]);
-                        return date.toLocaleDateString() + ' ' + date.toLocaleTimeString() + '<br/>' +
-                               params[0].marker + ' 粉丝数: ' + params[0].value[1];
-                    }}
-                }},
-                xAxis: {{
-                    type: 'time',
-                    axisLabel: {{
-                        formatter: function(value) {{
-                            var date = new Date(value);
-                            return date.getMonth() + 1 + '/' + date.getDate();
-                        }}
-                    }}
-                }},
-                yAxis: {{
-                    type: 'value',
-                    name: '粉丝数',
-                    nameTextStyle: {{
-                        padding: [0, 0, 0, 40]
-                    }}
-                }},
-                series: [
-                    {{
-                        name: 'CSDN 粉丝',
-                        type: 'line',
-                        smooth: true,
-                        symbol: 'circle',
-                        symbolSize: 6,
-                        lineStyle: {{
-                            color: '#5470C6',
-                            width: 3
-                        }},
-                        itemStyle: {{
-                            color: '#5470C6'
-                        }},
-                        areaStyle: {{
-                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    areaStyle: {{
+                        color: {{
+                            type: 'linear',
+                            x: 0,
+                            y: 0,
+                            x2: 0,
+                            y2: 1,
+                            colorStops: [
                                 {{
                                     offset: 0,
-                                    color: 'rgba(84, 112, 198, 0.5)'
+                                    color: 'rgba(78, 121, 167, 0.5)'
                                 }},
                                 {{
                                     offset: 1,
-                                    color: 'rgba(84, 112, 198, 0.1)'
+                                    color: 'rgba(78, 121, 167, 0.1)'
                                 }}
-                            ])
-                        }},
-                        data: filteredData.map(function(item) {{ return [item[0], item[1]]; }})
-                    }}
-                ],
-                toolbox: {{
-                    feature: {{
-                        saveAsImage: {{}}
+                            ]
+                        }}
                     }}
                 }}
-            }};
-            
-            csdnChart.setOption(csdnOption, true);
-        }}
-        
-        // 绘制头条图表
-        function drawToutiaoChart(range) {{
-            var filteredData = filterDataByRange(toutiaoData, range);
-            
-            if (filteredData.length === 0) {{
-                // 如果筛选后没有数据，显示提示信息
-                toutiaoChart.setOption({{
-                    title: {{
-                        text: '头条 粉丝趋势 - 选定时间段无数据',
-                        left: 'center'
-                    }},
-                    graphic: [
-                        {{
-                            type: 'text',
-                            left: 'center',
-                            top: 'middle',
-                            style: {{
-                                text: '选定的时间段内没有数据',
-                                fontSize: 20,
-                                fill: '#999'
-                            }}
-                        }}
-                    ]
-                }});
-                return;
+            ],
+            grid: {{
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                containLabel: true
             }}
-            
-            var toutiaoOption = {{
-                title: {{
-                    text: '头条 粉丝趋势',
-                    left: 'center'
-                }},
-                tooltip: {{
-                    trigger: 'axis',
-                    formatter: function(params) {{
-                        var date = new Date(params[0].value[0]);
-                        return date.toLocaleDateString() + ' ' + date.toLocaleTimeString() + '<br/>' +
-                               params[0].marker + ' 粉丝数: ' + params[0].value[1];
+        }});
+        
+        // 设置今日头条图表
+        toutiaoChart.setOption({{
+            title: {{
+                text: '头条粉丝数趋势',
+                left: 'center',
+                textStyle: {{
+                    fontSize: 16
+                }}
+            }},
+            tooltip: {{
+                trigger: 'axis',
+                formatter: function(params) {{
+                    const date = new Date(params[0].value[0]);
+                    const formattedDate = `${{date.getFullYear()}}-${{(date.getMonth()+1).toString().padStart(2, '0')}}-${{date.getDate().toString().padStart(2, '0')}} ${{date.getHours().toString().padStart(2, '0')}}:${{date.getMinutes().toString().padStart(2, '0')}}`;
+                    return `${{formattedDate}}<br/>粉丝数: ${{params[0].value[1]}}`;
+                }}
+            }},
+            xAxis: {{
+                type: 'time',
+                splitLine: {{
+                    show: false
+                }}
+            }},
+            yAxis: {{
+                type: 'value',
+                nameLocation: 'end',
+                splitLine: {{
+                    show: true,
+                    lineStyle: {{
+                        type: 'dashed',
+                        color: '#DDD'
                     }}
-                }},
-                xAxis: {{
-                    type: 'time',
-                    axisLabel: {{
-                        formatter: function(value) {{
-                            var date = new Date(value);
-                            return date.getMonth() + 1 + '/' + date.getDate();
-                        }}
-                    }}
-                }},
-                yAxis: {{
-                    type: 'value',
-                    name: '粉丝数',
-                    nameTextStyle: {{
-                        padding: [0, 0, 0, 40]
-                    }}
-                }},
-                series: [
-                    {{
-                        name: '头条 粉丝',
-                        type: 'line',
-                        smooth: true,
-                        symbol: 'circle',
-                        symbolSize: 6,
-                        lineStyle: {{
-                            color: '#FF9F43',
-                            width: 3
-                        }},
-                        itemStyle: {{
-                            color: '#FF9F43'
-                        }},
-                        areaStyle: {{
-                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                }}
+            }},
+            series: [
+                {{
+                    name: '头条粉丝',
+                    type: 'line',
+                    data: toutiaoData,
+                    showSymbol: false,
+                    smooth: true,
+                    lineStyle: {{
+                        width: 3,
+                        color: '#f28e2b'
+                    }},
+                    areaStyle: {{
+                        color: {{
+                            type: 'linear',
+                            x: 0,
+                            y: 0,
+                            x2: 0,
+                            y2: 1,
+                            colorStops: [
                                 {{
                                     offset: 0,
-                                    color: 'rgba(255, 159, 67, 0.5)'
+                                    color: 'rgba(242, 142, 43, 0.5)'
                                 }},
                                 {{
                                     offset: 1,
-                                    color: 'rgba(255, 159, 67, 0.1)'
+                                    color: 'rgba(242, 142, 43, 0.1)'
                                 }}
-                            ])
-                        }},
-                        data: filteredData.map(function(item) {{ return [item[0], item[1]]; }})
-                    }}
-                ],
-                toolbox: {{
-                    feature: {{
-                        saveAsImage: {{}}
+                            ]
+                        }}
                     }}
                 }}
-            }};
-            
-            toutiaoChart.setOption(toutiaoOption, true);
-        }}
-        
-        // 绘制JueJin图表
-        function drawJueJinChart(range) {{
-            var filteredData = filterDataByRange(juejinData, range);
-            
-            if (filteredData.length === 0) {{
-                // 如果筛选后没有数据，显示提示信息
-                juejinChart.setOption({{
-                    title: {{
-                        text: 'JueJin 粉丝趋势 - 选定时间段无数据',
-                        left: 'center'
-                    }},
-                    graphic: [
-                        {{
-                            type: 'text',
-                            left: 'center',
-                            top: 'middle',
-                            style: {{
-                                text: '选定的时间段内没有数据',
-                                fontSize: 20,
-                                fill: '#999'
-                            }}
-                        }}
-                    ]
-                }});
-                return;
+            ],
+            grid: {{
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                containLabel: true
             }}
-            
-            var juejinOption = {{
-                title: {{
-                    text: 'JueJin 粉丝趋势',
-                    left: 'center'
-                }},
-                tooltip: {{
-                    trigger: 'axis',
-                    formatter: function(params) {{
-                        var date = new Date(params[0].value[0]);
-                        return date.toLocaleDateString() + ' ' + date.toLocaleTimeString() + '<br/>' +
-                               params[0].marker + ' 粉丝数: ' + params[0].value[1];
+        }});
+        
+        // 设置掘金图表
+        juejinChart.setOption({{
+            title: {{
+                text: '掘金粉丝数趋势',
+                left: 'center',
+                textStyle: {{
+                    fontSize: 16
+                }}
+            }},
+            tooltip: {{
+                trigger: 'axis',
+                formatter: function(params) {{
+                    const date = new Date(params[0].value[0]);
+                    const formattedDate = `${{date.getFullYear()}}-${{(date.getMonth()+1).toString().padStart(2, '0')}}-${{date.getDate().toString().padStart(2, '0')}} ${{date.getHours().toString().padStart(2, '0')}}:${{date.getMinutes().toString().padStart(2, '0')}}`;
+                    return `${{formattedDate}}<br/>粉丝数: ${{params[0].value[1]}}`;
+                }}
+            }},
+            xAxis: {{
+                type: 'time',
+                splitLine: {{
+                    show: false
+                }}
+            }},
+            yAxis: {{
+                type: 'value',
+                nameLocation: 'end',
+                splitLine: {{
+                    show: true,
+                    lineStyle: {{
+                        type: 'dashed',
+                        color: '#DDD'
                     }}
-                }},
-                xAxis: {{
-                    type: 'time',
-                    axisLabel: {{
-                        formatter: function(value) {{
-                            var date = new Date(value);
-                            return date.getMonth() + 1 + '/' + date.getDate();
-                        }}
-                    }}
-                }},
-                yAxis: {{
-                    type: 'value',
-                    name: '粉丝数',
-                    nameTextStyle: {{
-                        padding: [0, 0, 0, 40]
-                    }}
-                }},
-                series: [
-                    {{
-                        name: 'JueJin 粉丝',
-                        type: 'line',
-                        smooth: true,
-                        symbol: 'circle',
-                        symbolSize: 6,
-                        lineStyle: {{
-                            color: '#FF9F43',
-                            width: 3
-                        }},
-                        itemStyle: {{
-                            color: '#FF9F43'
-                        }},
-                        areaStyle: {{
-                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                }}
+            }},
+            series: [
+                {{
+                    name: '掘金粉丝',
+                    type: 'line',
+                    data: juejinData,
+                    showSymbol: false,
+                    smooth: true,
+                    lineStyle: {{
+                        width: 3,
+                        color: '#59a14f'
+                    }},
+                    areaStyle: {{
+                        color: {{
+                            type: 'linear',
+                            x: 0,
+                            y: 0,
+                            x2: 0,
+                            y2: 1,
+                            colorStops: [
                                 {{
                                     offset: 0,
-                                    color: 'rgba(255, 159, 67, 0.5)'
+                                    color: 'rgba(89, 161, 79, 0.5)'
                                 }},
                                 {{
                                     offset: 1,
-                                    color: 'rgba(255, 159, 67, 0.1)'
+                                    color: 'rgba(89, 161, 79, 0.1)'
                                 }}
-                            ])
-                        }},
-                        data: filteredData.map(function(item) {{ return [item[0], item[1]]; }})
-                    }}
-                ],
-                toolbox: {{
-                    feature: {{
-                        saveAsImage: {{}}
+                            ]
+                        }}
                     }}
                 }}
-            }};
-            
-            juejinChart.setOption(juejinOption, true);
-        }}
+            ],
+            grid: {{
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                containLabel: true
+            }}
+        }});
         
-        // 绘制组合图表
-        function drawCombinedChart(range) {{
-            var filteredCSDNData = filterDataByRange(csdnData, range);
-            var filteredToutiaoData = filterDataByRange(toutiaoData, range);
-            var filteredJueJinData = filterDataByRange(juejinData, range);
-            
-            if (filteredCSDNData.length === 0 && filteredToutiaoData.length === 0 && filteredJueJinData.length === 0) {{
-                // 如果筛选后没有数据，显示提示信息
-                combinedChart.setOption({{
-                    title: {{
-                        text: 'CSDN vs 头条 vs JueJin 粉丝数对比 - 选定时间段无数据',
-                        left: 'center'
+        // 设置知乎图表
+        zhihuChart.setOption({{
+            title: {{
+                text: '知乎粉丝数趋势',
+                left: 'center',
+                textStyle: {{
+                    fontSize: 16
+                }}
+            }},
+            tooltip: {{
+                trigger: 'axis',
+                formatter: function(params) {{
+                    const date = new Date(params[0].value[0]);
+                    const formattedDate = `${{date.getFullYear()}}-${{(date.getMonth()+1).toString().padStart(2, '0')}}-${{date.getDate().toString().padStart(2, '0')}} ${{date.getHours().toString().padStart(2, '0')}}:${{date.getMinutes().toString().padStart(2, '0')}}`;
+                    return `${{formattedDate}}<br/>粉丝数: ${{params[0].value[1]}}`;
+                }}
+            }},
+            xAxis: {{
+                type: 'time',
+                splitLine: {{
+                    show: false
+                }}
+            }},
+            yAxis: {{
+                type: 'value',
+                nameLocation: 'end',
+                splitLine: {{
+                    show: true,
+                    lineStyle: {{
+                        type: 'dashed',
+                        color: '#DDD'
+                    }}
+                }}
+            }},
+            series: [
+                {{
+                    name: '知乎粉丝',
+                    type: 'line',
+                    data: zhihuData,
+                    showSymbol: false,
+                    smooth: true,
+                    lineStyle: {{
+                        width: 3,
+                        color: '#8E44AD'
                     }},
-                    graphic: [
-                        {{
-                            type: 'text',
-                            left: 'center',
-                            top: 'middle',
-                            style: {{
-                                text: '选定的时间段内没有数据',
-                                fontSize: 20,
-                                fill: '#999'
-                            }}
+                    areaStyle: {{
+                        color: {{
+                            type: 'linear',
+                            x: 0,
+                            y: 0,
+                            x2: 0,
+                            y2: 1,
+                            colorStops: [
+                                {{
+                                    offset: 0,
+                                    color: 'rgba(142, 68, 173, 0.5)'
+                                }},
+                                {{
+                                    offset: 1,
+                                    color: 'rgba(142, 68, 173, 0.1)'
+                                }}
+                            ]
                         }}
-                    ]
-                }});
-                return;
+                    }}
+                }}
+            ],
+            grid: {{
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                containLabel: true
+            }}
+        }});
+        
+        // 设置合并图表选项
+        function updateCombinedChart(days) {{
+            let filteredCsdnData = csdnData;
+            let filteredToutiaoData = toutiaoData;
+            let filteredJuejinData = juejinData;
+            let filteredZhihuData = zhihuData;
+            
+            if (days > 0) {{
+                const cutoffDate = new Date();
+                cutoffDate.setDate(cutoffDate.getDate() - days);
+                
+                filteredCsdnData = csdnData.filter(item => new Date(item[0]) >= cutoffDate);
+                filteredToutiaoData = toutiaoData.filter(item => new Date(item[0]) >= cutoffDate);
+                filteredJuejinData = juejinData.filter(item => new Date(item[0]) >= cutoffDate);
+                filteredZhihuData = zhihuData.filter(item => new Date(item[0]) >= cutoffDate);
             }}
             
-            var combinedOption = {{
+            combinedChart.setOption({{
                 title: {{
-                    text: 'CSDN vs 头条 vs JueJin 粉丝数对比',
-                    left: 'center'
+                    text: '平台粉丝数对比',
+                    left: 'center',
+                    textStyle: {{
+                        fontSize: 18,
+                        fontWeight: 'bold'
+                    }}
                 }},
                 tooltip: {{
                     trigger: 'axis',
-                    formatter: function(params) {{
-                        if (params.length === 0) return '';
-                        
-                        var date = new Date(params[0].value[0]);
-                        var result = date.toLocaleDateString() + ' ' + date.toLocaleTimeString() + '<br/>';
-                        
-                        params.forEach(function(param) {{
-                            if (param.value) {{
-                                result += param.marker + ' ' + param.seriesName + ': ' + param.value[1] + '<br/>';
-                            }}
-                        }});
-                        
-                        return result;
+                    axisPointer: {{
+                        type: 'shadow'
                     }}
                 }},
                 legend: {{
-                    data: ['CSDN 粉丝', '头条 粉丝', 'JueJin 粉丝'],
-                    top: 30
+                    data: ['CSDN', '头条', '掘金', '知乎'],
+                    top: '30px'
                 }},
+                xAxis: {{
+                    type: 'time',
+                    splitLine: {{
+                        show: false
+                    }}
+                }},
+                yAxis: {{
+                    type: 'value',
+                    name: '粉丝数',
+                    nameLocation: 'end',
+                    splitLine: {{
+                        show: true,
+                        lineStyle: {{
+                            type: 'dashed',
+                            color: '#DDD'
+                        }}
+                    }}
+                }},
+                series: [
+                    {{
+                        name: 'CSDN',
+                        type: 'line',
+                        data: filteredCsdnData,
+                        showSymbol: false,
+                        smooth: true,
+                        lineStyle: {{
+                            width: 2.5,
+                            color: '#4e79a7'
+                        }}
+                    }},
+                    {{
+                        name: '头条',
+                        type: 'line',
+                        data: filteredToutiaoData,
+                        showSymbol: false,
+                        smooth: true,
+                        lineStyle: {{
+                            width: 2.5,
+                            color: '#f28e2b'
+                        }}
+                    }},
+                    {{
+                        name: '掘金',
+                        type: 'line',
+                        data: filteredJuejinData,
+                        showSymbol: false,
+                        smooth: true,
+                        lineStyle: {{
+                            width: 2.5,
+                            color: '#59a14f'
+                        }}
+                    }},
+                    {{
+                        name: '知乎',
+                        type: 'line',
+                        data: filteredZhihuData,
+                        showSymbol: false,
+                        smooth: true,
+                        lineStyle: {{
+                            width: 2.5,
+                            color: '#8E44AD'
+                        }}
+                    }}
+                ],
                 grid: {{
                     left: '3%',
                     right: '4%',
                     bottom: '3%',
                     containLabel: true
-                }},
-                toolbox: {{
-                    feature: {{
-                        saveAsImage: {{}}
-                    }}
-                }},
-                xAxis: {{
-                    type: 'time',
-                    axisLabel: {{
-                        formatter: function(value) {{
-                            var date = new Date(value);
-                            return date.getMonth() + 1 + '/' + date.getDate();
-                        }}
-                    }}
-                }},
-                yAxis: {{
-                    type: 'value',
-                    name: '粉丝数'
-                }},
-                series: [
-                    {{
-                        name: 'CSDN 粉丝',
-                        type: 'line',
-                        smooth: true,
-                        symbol: 'circle',
-                        symbolSize: 8,
-                        lineStyle: {{
-                            width: 3,
-                            color: '#5470C6'
-                        }},
-                        data: filteredCSDNData.map(function(item) {{ return [item[0], item[1]]; }})
-                    }},
-                    {{
-                        name: '头条 粉丝',
-                        type: 'line',
-                        smooth: true,
-                        symbol: 'circle',
-                        symbolSize: 8,
-                        lineStyle: {{
-                            width: 3,
-                            color: '#FF9F43'
-                        }},
-                        data: filteredToutiaoData.map(function(item) {{ return [item[0], item[1]]; }})
-                    }},
-                    {{
-                        name: 'JueJin 粉丝',
-                        type: 'line',
-                        smooth: true,
-                        symbol: 'circle',
-                        symbolSize: 8,
-                        lineStyle: {{
-                            width: 3,
-                            color: '#FF9F43'
-                        }},
-                        data: filteredJueJinData.map(function(item) {{ return [item[0], item[1]]; }})
-                    }}
-                ]
-            }};
-            
-            combinedChart.setOption(combinedOption, true);
-        }}
-        
-        // 为时间筛选按钮添加点击事件
-        function setupTimeFilters() {{
-            // CSDN图表的时间筛选
-            var csdnFilterButtons = document.querySelectorAll('#csdnTimeFilter .time-btn');
-            csdnFilterButtons.forEach(function(btn) {{
-                btn.addEventListener('click', function() {{
-                    // 移除所有按钮的active类
-                    csdnFilterButtons.forEach(function(b) {{ b.classList.remove('active'); }});
-                    // 给当前点击的按钮添加active类
-                    this.classList.add('active');
-                    // 根据选择的时间范围重新绘制图表
-                    drawCSDNChart(this.getAttribute('data-range'));
-                }});
-            }});
-            
-            // 头条图表的时间筛选
-            var toutiaoFilterButtons = document.querySelectorAll('#toutiaoTimeFilter .time-btn');
-            toutiaoFilterButtons.forEach(function(btn) {{
-                btn.addEventListener('click', function() {{
-                    // 移除所有按钮的active类
-                    toutiaoFilterButtons.forEach(function(b) {{ b.classList.remove('active'); }});
-                    // 给当前点击的按钮添加active类
-                    this.classList.add('active');
-                    // 根据选择的时间范围重新绘制图表
-                    drawToutiaoChart(this.getAttribute('data-range'));
-                }});
-            }});
-            
-            // JueJin图表的时间筛选
-            var juejinFilterButtons = document.querySelectorAll('#juejinTimeFilter .time-btn');
-            juejinFilterButtons.forEach(function(btn) {{
-                btn.addEventListener('click', function() {{
-                    // 移除所有按钮的active类
-                    juejinFilterButtons.forEach(function(b) {{ b.classList.remove('active'); }});
-                    // 给当前点击的按钮添加active类
-                    this.classList.add('active');
-                    // 根据选择的时间范围重新绘制图表
-                    drawJueJinChart(this.getAttribute('data-range'));
-                }});
-            }});
-            
-            // 组合图表的时间筛选
-            var combinedFilterButtons = document.querySelectorAll('#combinedTimeFilter .time-btn');
-            combinedFilterButtons.forEach(function(btn) {{
-                btn.addEventListener('click', function() {{
-                    // 移除所有按钮的active类
-                    combinedFilterButtons.forEach(function(b) {{ b.classList.remove('active'); }});
-                    // 给当前点击的按钮添加active类
-                    this.classList.add('active');
-                    // 根据选择的时间范围重新绘制图表
-                    drawCombinedChart(this.getAttribute('data-range'));
-                }});
+                }}
             }});
         }}
         
-        // 初始化所有图表
-        function initCharts() {{
-            drawCSDNChart('all');
-            drawToutiaoChart('all');
-            drawJueJinChart('all');
-            drawCombinedChart('all');
-            setupTimeFilters();
-        }}
+        // 初始化合并图表 (默认显示7天)
+        updateCombinedChart(7);
         
-        // 响应窗口大小变化
+        // 添加时间过滤器按钮事件
+        document.querySelectorAll('.time-btn').forEach(btn => {{
+            btn.addEventListener('click', function() {{
+                // 取消所有按钮的活跃状态
+                document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+                // 设置当前按钮为活跃状态
+                this.classList.add('active');
+                // 更新图表
+                const days = parseInt(this.getAttribute('data-days'));
+                updateCombinedChart(days);
+            }});
+        }});
+        
+        // 处理窗口大小变化
         window.addEventListener('resize', function() {{
             csdnChart.resize();
             toutiaoChart.resize();
             juejinChart.resize();
+            zhihuChart.resize();
             combinedChart.resize();
         }});
-        
-        // 页面加载完成后初始化图表
-        document.addEventListener('DOMContentLoaded', initCharts);
-        
-        // 如果DOMContentLoaded已经触发，手动初始化图表
-        if (document.readyState === 'loading') {{
-            document.addEventListener('DOMContentLoaded', initCharts);
-        }} else {{
-            initCharts();
-        }}
     </script>
 </body>
 </html>
@@ -895,7 +800,7 @@ def generate_error_html(error_message):
             align-items: center;
             height: 100vh;
         }}
-        .error-card {{
+        .error-container {{
             background-color: white;
             border-radius: 10px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
@@ -906,39 +811,39 @@ def generate_error_html(error_message):
         }}
         .error-icon {{
             font-size: 60px;
-            color: #f44336;
+            color: #e74c3c;
             margin-bottom: 20px;
         }}
         h1 {{
-            margin: 0 0 20px 0;
-            color: #333;
+            margin: 0;
+            margin-bottom: 20px;
+            color: #e74c3c;
         }}
         p {{
-            margin: 20px 0;
-            line-height: 1.6;
-            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.5;
+            color: #555;
         }}
-        .button {{
+        .btn {{
             display: inline-block;
-            margin-top: 20px;
             padding: 10px 20px;
-            background-color: #5470C6;
+            background-color: #3498db;
             color: white;
-            border-radius: 5px;
             text-decoration: none;
+            border-radius: 5px;
             transition: background-color 0.3s;
         }}
-        .button:hover {{
-            background-color: #4560b0;
+        .btn:hover {{
+            background-color: #2980b9;
         }}
     </style>
 </head>
 <body>
-    <div class="error-card">
+    <div class="error-container">
         <div class="error-icon">⚠️</div>
-        <h1>无法生成数据分析</h1>
+        <h1>数据分析错误</h1>
         <p>{error_message}</p>
-        <a href="javascript:window.history.back();" class="button">返回</a>
+        <a href="javascript:window.close();" class="btn">关闭页面</a>
     </div>
 </body>
 </html>
@@ -946,31 +851,34 @@ def generate_error_html(error_message):
     return html
 
 def calculate_change(values):
-    """计算数据的百分比变化"""
+    """计算数据变化百分比"""
     if not values or len(values) < 2:
-        return 0
+        return None
     
     first_value = values[0]
     last_value = values[-1]
     
     if first_value == 0:
-        return 0
+        return None
         
-    change = (last_value - first_value) / first_value * 100
+    change = ((last_value - first_value) / first_value) * 100
     return change
 
 def format_change(change):
-    """格式化变化百分比显示"""
-    if change == 0:
-        return "无变化"
-    
+    """格式化变化百分比"""
+    if change is None:
+        return "数据不足"
+        
     if change > 0:
         return f"+{change:.2f}%"
     else:
         return f"{change:.2f}%"
-    
+
 def get_change_class(change):
-    """获取变化的CSS类"""
+    """根据变化百分比获取样式类名"""
+    if change is None:
+        return ""
+        
     if change > 0:
         return "positive"
     elif change < 0:
@@ -979,23 +887,51 @@ def get_change_class(change):
         return ""
 
 def generate_analysis_page():
-    """生成分析页面并打开"""
-    # 读取数据
-    csdn_data = read_csv_data('csdn_stats.csv')
-    toutiao_data = read_csv_data('toutiao_stats.csv')
-    juejin_data = read_csv_data('juejin_stats.csv')
-    
-    # 生成HTML
-    html_content = generate_html(csdn_data, toutiao_data, juejin_data)
-    
-    # 保存HTML文件
-    output_file = 'fans_data_analysis.html'
-    with open(output_file, 'w', encoding='utf-8') as f:
-        f.write(html_content)
-    
-    # 打开浏览器显示
-    webbrowser.open('file://' + os.path.abspath(output_file))
-    return output_file
+    """生成粉丝数据分析页面"""
+    try:
+        # 获取数据文件路径
+        data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')
+        os.makedirs(data_dir, exist_ok=True)
+        
+        csdn_file = os.path.join(data_dir, 'csdn_stats.csv')
+        toutiao_file = os.path.join(data_dir, 'toutiao_stats.csv')
+        juejin_file = os.path.join(data_dir, 'juejin_stats.csv')
+        zhihu_file = os.path.join(data_dir, 'zhihu_stats.csv')
+        
+        # 读取数据
+        csdn_data = read_csv_data(csdn_file)
+        toutiao_data = read_csv_data(toutiao_file)
+        juejin_data = read_csv_data(juejin_file)
+        zhihu_data = read_csv_data(zhihu_file)
+        
+        # 生成HTML
+        html = generate_html(csdn_data, toutiao_data, juejin_data, zhihu_data)
+        
+        # 保存HTML文件
+        output_file = os.path.join(data_dir, 'fans_analysis.html')
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write(html)
+            
+        # 在浏览器中打开
+        webbrowser.open('file://' + os.path.abspath(output_file))
+        
+        return output_file
+        
+    except Exception as e:
+        print(f"生成分析页面时出错: {e}")
+        import traceback
+        print(traceback.format_exc())
+        
+        # 生成错误页面
+        error_html = generate_error_html(f"生成分析页面时出错: {str(e)}")
+        error_file = os.path.join(data_dir, 'error.html')
+        with open(error_file, 'w', encoding='utf-8') as f:
+            f.write(error_html)
+            
+        # 在浏览器中打开错误页面
+        webbrowser.open('file://' + os.path.abspath(error_file))
+        
+        return None
 
 if __name__ == "__main__":
     # 测试函数

@@ -14,6 +14,7 @@ from datetime import datetime
 from csdn import extract_csdn_stats
 from toutiao import parse_toutiao_user_stats, init_browser
 from juejin import extract_juejin_stats
+from zhihu import extract_zhihu_stats
 from data_analysis import generate_analysis_page
 import settings
 
@@ -22,7 +23,8 @@ def load_config():
     config = {
         "CSDN_URL": "https://blog.csdn.net/qq_34598061",  # 默认URL
         "TOUTIAO_URL": "https://www.toutiao.com/c/user/token/MS4wLjABAAAA-vxeZNtd-323uOaHVG-qQJnP0kL3_QSOTO85-9GJPXo/",  # 默认URL
-        "JUEJIN_URL": "https://juejin.cn/user/3799544245529837/posts"  # 默认URL
+        "JUEJIN_URL": "https://juejin.cn/user/3799544245529837/posts",  # 默认URL
+        "ZHIHU_URL": "https://www.zhihu.com/people/bu-yi-jue-63"  # 默认URL
     }
     
     # 尝试读取配置文件
@@ -56,6 +58,7 @@ class StatisticsMenuBarApp(rumps.App):
         self.csdn_data = None
         self.toutiao_data = None
         self.juejin_data = None
+        self.zhihu_data = None
         self.current_display = "csdn"  # Start with CSDN
         self.rotation_interval = 5  # Seconds to display each platform
         
@@ -88,6 +91,14 @@ class StatisticsMenuBarApp(rumps.App):
         self.juejin_reads_item = rumps.MenuItem("阅读: 加载中...")
         self.juejin_following_item = rumps.MenuItem("关注了: 加载中...")
         self.juejin_followers_item = rumps.MenuItem("关注者: 加载中...")
+        
+        # 新增知乎菜单项
+        self.zhihu_details_menu = rumps.MenuItem("知乎详细数据")
+        self.zhihu_upvotes_item = rumps.MenuItem("赞同: 加载中...")
+        self.zhihu_likes_item = rumps.MenuItem("喜欢: 加载中...")
+        self.zhihu_collections_item = rumps.MenuItem("收藏: 加载中...")
+        self.zhihu_following_item = rumps.MenuItem("关注了: 加载中...")
+        self.zhihu_followers_item = rumps.MenuItem("关注者: 加载中...")
         
         # 专注模式菜单
         self.focus_mode_item = rumps.MenuItem("专注模式", callback=self.toggle_focus_mode)
@@ -157,11 +168,19 @@ class StatisticsMenuBarApp(rumps.App):
         self.juejin_details_menu.add(self.juejin_following_item)
         self.juejin_details_menu.add(self.juejin_followers_item)
         
+        # 添加知乎子菜单项
+        self.zhihu_details_menu.add(self.zhihu_upvotes_item)
+        self.zhihu_details_menu.add(self.zhihu_likes_item)
+        self.zhihu_details_menu.add(self.zhihu_collections_item)
+        self.zhihu_details_menu.add(self.zhihu_following_item)
+        self.zhihu_details_menu.add(self.zhihu_followers_item)
+        
         # Configure menu - 完全清除默认菜单并使用我们自己的菜单项
         self.menu.clear()  # 清除默认菜单
         self.menu.add(self.csdn_details_menu)
         self.menu.add(self.toutiao_details_menu)
         self.menu.add(self.juejin_details_menu)  # 添加掘金菜单
+        self.menu.add(self.zhihu_details_menu)   # 添加知乎菜单
         self.menu.add(None)  # 分隔符
         self.menu.add(self.data_analysis_item)
         self.menu.add(None)  # 分隔符
@@ -349,7 +368,9 @@ class StatisticsMenuBarApp(rumps.App):
                     self.current_display = "toutiao"
                 elif self.current_display == "toutiao" and self.juejin_data:
                     self.current_display = "juejin"
-                elif self.current_display == "juejin" and self.csdn_data:
+                elif self.current_display == "juejin" and self.zhihu_data:
+                    self.current_display = "zhihu"
+                elif self.current_display == "zhihu" and self.csdn_data:
                     self.current_display = "csdn"
                 else:
                     self.current_display = "csdn"
@@ -365,6 +386,8 @@ class StatisticsMenuBarApp(rumps.App):
                 self.title = f"头条粉丝: {self.toutiao_data['fans']}"
             elif self.current_display == "juejin" and self.juejin_data:
                 self.title = f"掘金粉丝: {self.juejin_data['followers']}"
+            elif self.current_display == "zhihu" and self.zhihu_data:
+                self.title = f"知乎粉丝: {self.zhihu_data['followers']}"
             else:
                 self.title = "获取中..."
     
@@ -447,6 +470,33 @@ class StatisticsMenuBarApp(rumps.App):
         except Exception as e:
             print(f"获取掘金数据时出错: {e}")
             self.juejin_data = {
+                "followers": "Error",
+                "data_complete": False
+            }
+            
+        # 获取知乎数据
+        try:
+            print("\n正在获取知乎数据...")
+            self.zhihu_data = extract_zhihu_stats(self.config["ZHIHU_URL"], page=self.browser)
+            if self.zhihu_data and self.zhihu_data.get("data_complete", False):
+                print(f"[知乎] 关注者: {self.zhihu_data['followers']} (数据完整)")
+                
+                # 更新知乎菜单项
+                self.zhihu_upvotes_item.title = f"赞同: {self.zhihu_data['upvotes']}"
+                self.zhihu_likes_item.title = f"喜欢: {self.zhihu_data['likes']}"
+                self.zhihu_collections_item.title = f"收藏: {self.zhihu_data['collections']}"
+                self.zhihu_following_item.title = f"关注了: {self.zhihu_data['following']}"
+                self.zhihu_followers_item.title = f"关注者: {self.zhihu_data['followers']}"
+            else:
+                print("[知乎] 数据不完整或获取失败")
+                if not self.zhihu_data:
+                    self.zhihu_data = {
+                        "followers": "Error",
+                        "data_complete": False
+                    }
+        except Exception as e:
+            print(f"获取知乎数据时出错: {e}")
+            self.zhihu_data = {
                 "followers": "Error",
                 "data_complete": False
             }

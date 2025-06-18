@@ -7,12 +7,18 @@ import datetime
 from csdn import extract_csdn_stats
 # 导入今日头条数据获取模块
 from toutiao import parse_toutiao_user_stats
+# 导入掘金数据获取模块
+from juejin import extract_juejin_stats
+# 导入知乎数据获取模块
+from zhihu import extract_zhihu_stats
 
 def load_config():
     """从配置文件加载URL"""
     config = {
         "CSDN_URL": "https://blog.csdn.net/qq_34598061",  # 默认URL
-        "TOUTIAO_URL": "https://www.toutiao.com/c/user/token/MS4wLjABAAAA-vxeZNtd-323uOaHVG-qQJnP0kL3_QSOTO85-9GJPXo/"  # 默认URL
+        "TOUTIAO_URL": "https://www.toutiao.com/c/user/token/MS4wLjABAAAA-vxeZNtd-323uOaHVG-qQJnP0kL3_QSOTO85-9GJPXo/",  # 默认URL
+        "JUEJIN_URL": "https://juejin.cn/user/3799544245529837/posts",  # 默认URL
+        "ZHIHU_URL": "https://www.zhihu.com/people/bu-yi-jue-63"  # 默认URL
     }
     
     # 尝试读取配置文件
@@ -45,6 +51,12 @@ def monitor_platforms(interval=5, duration=None):
             print(data)
 
             data = parse_toutiao_user_stats(toutiao_url)
+            print(data)
+            
+            data = extract_juejin_stats(juejin_url)
+            print(data)
+            
+            data = extract_zhihu_stats(zhihu_url)
             print(data)
 
             # 检查是否超过指定的运行时间
@@ -87,5 +99,46 @@ if __name__ == "__main__":
         print(f"关注数: {toutiao_data['follows']}")
     else:
         print("\n头条数据获取失败")
+    
+    # 暂停 3 秒
+    time.sleep(3)
+    
+    # 掘金统计
+    juejin_url = config.get("JUEJIN_URL")
+    juejin_data = extract_juejin_stats(juejin_url)
+    if juejin_data:
+        print(f"\n[掘金 - {juejin_data['timestamp']}]")
+        print(f"点赞数: {juejin_data['likes']}")
+        print(f"阅读量: {juejin_data['reads']}")
+        print(f"关注者: {juejin_data['followers']}")
+        print(f"关注了: {juejin_data['following']}")
+    else:
+        print("\n掘金数据获取失败")
+    
+    # 暂停 3 秒
+    time.sleep(3)
+    
+    # 知乎统计
+    zhihu_url = config.get("ZHIHU_URL")
+    zhihu_data = extract_zhihu_stats(zhihu_url)
+    if zhihu_data and zhihu_data['data_complete']:
+        print(f"\n[知乎 - {zhihu_data['timestamp']}]")
+        print(f"用户名: {zhihu_data['username']}")
+        print(f"简介: {zhihu_data['tagline']}")
+        print(f"回答: {zhihu_data['answers']}")
+        print(f"文章: {zhihu_data['articles']}")
+        print(f"专栏: {zhihu_data['columns']}")
+        print(f"收藏: {zhihu_data['collections']}")
+        print(f"赞同: {zhihu_data['upvotes']}")
+        print(f"感谢: {zhihu_data['thanks']}")
+        print(f"浏览: {zhihu_data['views']}")
+        print(f"关注了: {zhihu_data['following']}")
+        print(f"关注者: {zhihu_data['followers']}")
+        if zhihu_data['recent_activity']:
+            print("最近活动:")
+            for activity in zhihu_data['recent_activity'][:3]:
+                print(f"  - {activity['type']}: {activity['title']}")
+    else:
+        print("\n知乎数据获取失败")
     
     print("\n数据统计完成!")

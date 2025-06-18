@@ -156,7 +156,7 @@ def parse_toutiao_user_stats(url: str, page=None):
         print(f"关注数: {follows}")
 
         # 检查是否所有数据都获取成功
-        data_complete = all(x != "未找到" for x in [likes, fans, follows])
+        data_complete = all(x != "未找到" for x in [likes, fans, follows]) and all(int(x) > 0 for x in [likes, fans, follows] if x.isdigit())
         
         if data_complete:
             # 检查文件是否存在
@@ -170,7 +170,7 @@ def parse_toutiao_user_stats(url: str, page=None):
 
             print(f"\n数据已保存到 {os.path.abspath('toutiao_stats.csv')}")
         else:
-            print("\n数据不完整，未保存到CSV文件")
+            print("\n数据不完整或有数据项为0，未保存到CSV文件")
 
         # 尝试直接提取JavaScript变量中的数据的方法 (如果上面的方法失败)
         if not data_complete:
@@ -227,19 +227,25 @@ def parse_toutiao_user_stats(url: str, page=None):
                         fans = js_fans
                         follows = js_follows
                         
-                        # 检查文件是否存在
-                        file_exists = os.path.isfile('toutiao_stats.csv')
+                        # 检查数据项是否都大于0
+                        all_greater_than_zero = all(int(x) > 0 for x in [likes, fans, follows])
                         
-                        # 将数据保存到CSV文件
-                        with open('toutiao_stats.csv', 'a', encoding='utf-8') as f:
-                            if not file_exists:
-                                f.write("更新时间,获赞数,粉丝数,关注数\n")
-                            f.write(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')},{likes},{fans},{follows}\n")
-                        
-                        print(f"\n数据已通过JS方法获取并保存到 {os.path.abspath('toutiao_stats.csv')}")
-                        
-                        # 标记数据为完整
-                        data_complete = True
+                        if all_greater_than_zero:
+                            # 检查文件是否存在
+                            file_exists = os.path.isfile('toutiao_stats.csv')
+                            
+                            # 将数据保存到CSV文件
+                            with open('toutiao_stats.csv', 'a', encoding='utf-8') as f:
+                                if not file_exists:
+                                    f.write("更新时间,获赞数,粉丝数,关注数\n")
+                                f.write(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')},{likes},{fans},{follows}\n")
+                            
+                            print(f"\n数据已通过JS方法获取并保存到 {os.path.abspath('toutiao_stats.csv')}")
+                            
+                            # 标记数据为完整
+                            data_complete = True
+                        else:
+                            print("\n通过JS获取的数据中有项为0，未保存到CSV文件")
                     else:
                         if js_likes:
                             print(f"从JS中找到获赞数: {js_likes}")

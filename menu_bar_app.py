@@ -50,6 +50,9 @@ class StatisticsMenuBarApp(rumps.App):
         self.current_display = "csdn"  # Start with CSDN
         self.rotation_interval = 5  # Seconds to display each platform
         
+        # 专注模式标志
+        self.focus_mode_enabled = False  
+        
         # Initialize detailed menu items
         self.csdn_details_menu = rumps.MenuItem("CSDN详细数据")
         self.csdn_visitors_item = rumps.MenuItem("访问量: 加载中...")
@@ -61,6 +64,9 @@ class StatisticsMenuBarApp(rumps.App):
         self.toutiao_likes_item = rumps.MenuItem("获赞: 加载中...")
         self.toutiao_fans_item = rumps.MenuItem("粉丝: 加载中...")
         self.toutiao_follows_item = rumps.MenuItem("关注: 加载中...")
+        
+        # 专注模式菜单
+        self.focus_mode_item = rumps.MenuItem("专注模式", callback=self.toggle_focus_mode)
         
         # Add items to submenus
         self.csdn_details_menu.add(self.csdn_visitors_item)
@@ -77,6 +83,7 @@ class StatisticsMenuBarApp(rumps.App):
         self.menu.add(self.csdn_details_menu)
         self.menu.add(self.toutiao_details_menu)
         self.menu.add(None)  # 分隔符
+        self.menu.add(self.focus_mode_item)
         self.menu.add("更新数据")
         # 不添加退出选项，因为rumps已经默认添加了一个
         
@@ -90,15 +97,31 @@ class StatisticsMenuBarApp(rumps.App):
         self.display_thread.daemon = True
         self.display_thread.start()
     
+    def toggle_focus_mode(self, sender):
+        """切换专注模式"""
+        sender.state = not sender.state
+        self.focus_mode_enabled = sender.state
+        if sender.state:
+            try:
+                rumps.notification("专注模式", "已启用", "菜单栏数据将暂停更新")
+            except:
+                pass
+        else:
+            try:
+                rumps.notification("专注模式", "已关闭", "菜单栏数据将继续更新")
+            except:
+                pass
+    
     def rotate_display(self):
         """Rotate between CSDN and Toutiao data in the menu bar"""
         while True:
-            if self.current_display == "csdn" and self.csdn_data:
-                self.title = f"CSDN: {self.csdn_data['followers']}"
-                self.current_display = "toutiao"
-            elif self.current_display == "toutiao" and self.toutiao_data:
-                self.title = f"头条: {self.toutiao_data['fans']}"
-                self.current_display = "csdn"
+            if not self.focus_mode_enabled:  # 只在非专注模式下更新
+                if self.current_display == "csdn" and self.csdn_data:
+                    self.title = f"CSDN: {self.csdn_data['followers']}"
+                    self.current_display = "toutiao"
+                elif self.current_display == "toutiao" and self.toutiao_data:
+                    self.title = f"头条: {self.toutiao_data['fans']}"
+                    self.current_display = "csdn"
             time.sleep(self.rotation_interval)
     
     def update_menu_items(self):
@@ -132,21 +155,23 @@ class StatisticsMenuBarApp(rumps.App):
             self.update_menu_items()
             
             # Update title immediately after collection
-            if self.current_display == "csdn" and self.csdn_data:
-                self.title = f"CSDN: {self.csdn_data['followers']}"
-            elif self.current_display == "toutiao" and self.toutiao_data:
-                self.title = f"头条: {self.toutiao_data['fans']}"
+            if not self.focus_mode_enabled:  # 只在非专注模式下更新标题
+                if self.current_display == "csdn" and self.csdn_data:
+                    self.title = f"CSDN: {self.csdn_data['followers']}"
+                elif self.current_display == "toutiao" and self.toutiao_data:
+                    self.title = f"头条: {self.toutiao_data['fans']}"
             
             # Try to show notification when data is updated
-            try:
-                rumps.notification(
-                    title="数据已更新", 
-                    subtitle="粉丝统计", 
-                    message=f"CSDN: {self.csdn_data['followers']} 粉丝, 头条: {self.toutiao_data['fans'] if self.toutiao_data else '未知'} 粉丝"
-                )
-            except Exception as e:
-                print(f"无法显示通知: {e}")
-                # 通知失败不影响主要功能
+            if not self.focus_mode_enabled:  # 只在非专注模式下显示通知
+                try:
+                    rumps.notification(
+                        title="数据已更新", 
+                        subtitle="粉丝统计", 
+                        message=f"CSDN: {self.csdn_data['followers']} 粉丝, 头条: {self.toutiao_data['fans'] if self.toutiao_data else '未知'} 粉丝"
+                    )
+                except Exception as e:
+                    print(f"无法显示通知: {e}")
+                    # 通知失败不影响主要功能
             
         except Exception as e:
             print(f"Error collecting data: {e}")

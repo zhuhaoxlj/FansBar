@@ -115,12 +115,16 @@ class StatisticsMenuBarApp(rumps.App):
             elif self.current_display == "toutiao" and self.toutiao_data:
                 self.title = f"头条: {self.toutiao_data['fans']}"
             
-            # Show notification when data is updated
-            rumps.notification(
-                title="数据已更新", 
-                subtitle="粉丝统计", 
-                message=f"CSDN: {self.csdn_data['followers']} 粉丝, 头条: {self.toutiao_data['fans'] if self.toutiao_data else '未知'} 粉丝"
-            )
+            # Try to show notification when data is updated
+            try:
+                rumps.notification(
+                    title="数据已更新", 
+                    subtitle="粉丝统计", 
+                    message=f"CSDN: {self.csdn_data['followers']} 粉丝, 头条: {self.toutiao_data['fans'] if self.toutiao_data else '未知'} 粉丝"
+                )
+            except Exception as e:
+                print(f"无法显示通知: {e}")
+                # 通知失败不影响主要功能
             
         except Exception as e:
             print(f"Error collecting data: {e}")
@@ -140,7 +144,10 @@ class StatisticsMenuBarApp(rumps.App):
         thread = threading.Thread(target=self.collect_data)
         thread.daemon = True
         thread.start()
-        rumps.notification("数据更新", "统计数据", "正在更新数据，请稍等...")
+        try:
+            rumps.notification("数据更新", "统计数据", "正在更新数据，请稍等...")
+        except Exception as e:
+            print(f"无法显示通知: {e}")
     
     @rumps.clicked("退出")
     def quit_app(self, _):

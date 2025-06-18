@@ -155,19 +155,25 @@ def parse_toutiao_user_stats(url: str, page=None):
         print(f"粉丝数: {fans}")
         print(f"关注数: {follows}")
 
-        # 检查文件是否存在
-        file_exists = os.path.isfile('toutiao_stats.csv')
+        # 检查是否所有数据都获取成功
+        data_complete = all(x != "未找到" for x in [likes, fans, follows])
         
-        # 将数据保存到CSV文件，如果文件不存在，则创建文件并写入标题行，如果存在，则只追加数据
-        with open('toutiao_stats.csv', 'a', encoding='utf-8') as f:
-            if not file_exists:
-                f.write("更新时间,获赞数,粉丝数,关注数\n")
-            f.write(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')},{likes},{fans},{follows}\n")
+        if data_complete:
+            # 检查文件是否存在
+            file_exists = os.path.isfile('toutiao_stats.csv')
+            
+            # 将数据保存到CSV文件
+            with open('toutiao_stats.csv', 'a', encoding='utf-8') as f:
+                if not file_exists:
+                    f.write("更新时间,获赞数,粉丝数,关注数\n")
+                f.write(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')},{likes},{fans},{follows}\n")
 
-        print(f"\n数据已保存到 {os.path.abspath('toutiao_stats.csv')}")
+            print(f"\n数据已保存到 {os.path.abspath('toutiao_stats.csv')}")
+        else:
+            print("\n数据不完整，未保存到CSV文件")
 
         # 尝试直接提取JavaScript变量中的数据的方法 (如果上面的方法失败)
-        if likes == "未找到" or fans == "未找到" or follows == "未找到":
+        if not data_complete:
             print("\n尝试从JavaScript变量中提取数据...")
 
             try:
@@ -211,12 +217,36 @@ def parse_toutiao_user_stats(url: str, page=None):
                     follows_js = re.search(
                         r'"follow_count"\s*:\s*(\d+)', js_user_data)
 
-                    if likes_js:
-                        print(f"从JS中找到获赞数: {likes_js.group(1)}")
-                    if fans_js:
-                        print(f"从JS中找到粉丝数: {fans_js.group(1)}")
-                    if follows_js:
-                        print(f"从JS中找到关注数: {follows_js.group(1)}")
+                    js_likes = likes_js.group(1) if likes_js else None
+                    js_fans = fans_js.group(1) if fans_js else None
+                    js_follows = follows_js.group(1) if follows_js else None
+
+                    if all(x is not None for x in [js_likes, js_fans, js_follows]):
+                        # 如果JS方法获取到了所有数据，则更新并保存到CSV
+                        likes = js_likes
+                        fans = js_fans
+                        follows = js_follows
+                        
+                        # 检查文件是否存在
+                        file_exists = os.path.isfile('toutiao_stats.csv')
+                        
+                        # 将数据保存到CSV文件
+                        with open('toutiao_stats.csv', 'a', encoding='utf-8') as f:
+                            if not file_exists:
+                                f.write("更新时间,获赞数,粉丝数,关注数\n")
+                            f.write(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')},{likes},{fans},{follows}\n")
+                        
+                        print(f"\n数据已通过JS方法获取并保存到 {os.path.abspath('toutiao_stats.csv')}")
+                        
+                        # 标记数据为完整
+                        data_complete = True
+                    else:
+                        if js_likes:
+                            print(f"从JS中找到获赞数: {js_likes}")
+                        if js_fans:
+                            print(f"从JS中找到粉丝数: {js_fans}")
+                        if js_follows:
+                            print(f"从JS中找到关注数: {js_follows}")
             except errors.ContextLostError:
                 print("执行JS提取数据时页面刷新，无法获取JS数据")
             except Exception as e:
@@ -226,7 +256,8 @@ def parse_toutiao_user_stats(url: str, page=None):
             "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "likes": likes,
             "fans": fans,
-            "follows": follows
+            "follows": follows,
+            "data_complete": data_complete
         }
 
     except Exception as e:

@@ -132,10 +132,10 @@ class StatisticsMenuBarApp(rumps.App):
         """Rotate between CSDN and Toutiao data in the menu bar"""
         while True:
             if not self.focus_mode_enabled:  # 只在非专注模式下更新
-                if self.current_display == "csdn" and self.csdn_data:
+                if self.current_display == "csdn" and self.csdn_data and self.csdn_data.get("data_complete", False):
                     self.title = f"CSDN: {self.csdn_data['followers']}"
                     self.current_display = "toutiao"
-                elif self.current_display == "toutiao" and self.toutiao_data:
+                elif self.current_display == "toutiao" and self.toutiao_data and self.toutiao_data.get("data_complete", False):
                     self.title = f"头条: {self.toutiao_data['fans']}"
                     self.current_display = "csdn"
             time.sleep(self.rotation_interval)
@@ -159,7 +159,11 @@ class StatisticsMenuBarApp(rumps.App):
             # CSDN data
             csdn_url = self.config.get("CSDN_URL")
             self.csdn_data = extract_csdn_stats(csdn_url)
-            print(f"[CSDN] 粉丝数: {self.csdn_data['followers']}")
+            
+            if self.csdn_data and self.csdn_data.get("data_complete", False):
+                print(f"[CSDN] 粉丝数: {self.csdn_data['followers']} (数据完整)")
+            else:
+                print("[CSDN] 数据不完整，未保存")
             
             # Toutiao data
             toutiao_url = self.config.get("TOUTIAO_URL")
@@ -171,8 +175,10 @@ class StatisticsMenuBarApp(rumps.App):
             # 使用持久化的浏览器实例获取头条数据
             self.toutiao_data = parse_toutiao_user_stats(toutiao_url, self.browser)
             
-            if self.toutiao_data:
-                print(f"[头条] 粉丝数: {self.toutiao_data['fans']}")
+            if self.toutiao_data and self.toutiao_data.get("data_complete", False):
+                print(f"[头条] 粉丝数: {self.toutiao_data['fans']} (数据完整)")
+            elif self.toutiao_data:
+                print(f"[头条] 数据不完整，未保存")
             else:
                 print("获取头条数据失败，尝试重新初始化浏览器")
                 # 如果获取数据失败，尝试重新初始化浏览器
@@ -185,26 +191,35 @@ class StatisticsMenuBarApp(rumps.App):
                 if self.browser:
                     # 再次尝试获取数据
                     self.toutiao_data = parse_toutiao_user_stats(toutiao_url, self.browser)
-                    if self.toutiao_data:
-                        print(f"[头条] 粉丝数: {self.toutiao_data['fans']}")
+                    if self.toutiao_data and self.toutiao_data.get("data_complete", False):
+                        print(f"[头条] 粉丝数: {self.toutiao_data['fans']} (数据完整)")
+                    elif self.toutiao_data:
+                        print(f"[头条] 数据不完整，未保存")
             
             # Update menu items with new data
             self.update_menu_items()
             
             # Update title immediately after collection
             if not self.focus_mode_enabled:  # 只在非专注模式下更新标题
-                if self.current_display == "csdn" and self.csdn_data:
+                if self.current_display == "csdn" and self.csdn_data and self.csdn_data.get("data_complete", False):
                     self.title = f"CSDN: {self.csdn_data['followers']}"
-                elif self.current_display == "toutiao" and self.toutiao_data:
+                elif self.current_display == "toutiao" and self.toutiao_data and self.toutiao_data.get("data_complete", False):
                     self.title = f"头条: {self.toutiao_data['fans']}"
             
+            # 只有当两个平台的数据都完整时，才显示通知
+            csdn_data_complete = self.csdn_data and self.csdn_data.get("data_complete", False)
+            toutiao_data_complete = self.toutiao_data and self.toutiao_data.get("data_complete", False)
+            
             # Try to show notification when data is updated
-            if not self.focus_mode_enabled:  # 只在非专注模式下显示通知
+            if not self.focus_mode_enabled and (csdn_data_complete or toutiao_data_complete):  # 只在非专注模式下显示通知
                 try:
+                    csdn_fans = self.csdn_data['followers'] if csdn_data_complete else "未获取"
+                    toutiao_fans = self.toutiao_data['fans'] if toutiao_data_complete else "未获取"
+                    
                     rumps.notification(
                         title="数据已更新", 
                         subtitle="粉丝统计", 
-                        message=f"CSDN: {self.csdn_data['followers']} 粉丝, 头条: {self.toutiao_data['fans'] if self.toutiao_data else '未知'} 粉丝"
+                        message=f"CSDN: {csdn_fans} 粉丝, 头条: {toutiao_fans} 粉丝"
                     )
                 except Exception as e:
                     print(f"无法显示通知: {e}")

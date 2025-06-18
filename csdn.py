@@ -78,24 +78,34 @@ def extract_csdn_stats(url):
 
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
-        # 检查文件是否存在，决定是否写入标题行
-        file_exists = os.path.isfile('csdn_stats.csv')
+        # 验证数据是否有效（非零值）
+        data_complete = all(
+            int(x) > 0 for x in [visitor_count, original_count, follower_count, following_count]
+        )
         
-        # 将数据保存到CSV文件，如果文件不存在，则创建文件并写入标题行，如果存在，则只追加数据
-        with open('csdn_stats.csv', 'a', encoding='utf-8') as f:
-            if not file_exists:
-                f.write("更新时间,总访问量,原创,粉丝数,关注数\n")
-            f.write(
-                f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')},{visitor_count},{original_count},{follower_count},{following_count}\n")
+        if data_complete:
+            # 检查文件是否存在，决定是否写入标题行
+            file_exists = os.path.isfile('csdn_stats.csv')
+            
+            # 将数据保存到CSV文件
+            with open('csdn_stats.csv', 'a', encoding='utf-8') as f:
+                if not file_exists:
+                    f.write("更新时间,总访问量,原创,粉丝数,关注数\n")
+                f.write(
+                    f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')},{visitor_count},{original_count},{follower_count},{following_count}\n")
 
-        print(f"\n数据已保存到 {os.path.abspath('csdn_stats.csv')}")
+            print(f"\n数据已保存到 {os.path.abspath('csdn_stats.csv')}")
+        else:
+            print("\nCSND数据不完整，未保存到CSV文件")
+            
         return {
             "timestamp": timestamp,
             "visitors": visitor_count,
             "originals": original_count,
             "followers": follower_count,
             "following": following_count,
-            "site": "CSDN"
+            "site": "CSDN",
+            "data_complete": data_complete
         }
     except Exception as e:
         print(f"Error extracting CSDN data: {e}")
@@ -105,7 +115,8 @@ def extract_csdn_stats(url):
             "originals": "Error",
             "followers": "Error",
             "following": "Error",
-            "site": "CSDN"
+            "site": "CSDN",
+            "data_complete": False
         }
 
 
@@ -118,3 +129,4 @@ if __name__ == "__main__":
     print(f"原创: {data['originals']}")
     print(f"粉丝: {data['followers']}")
     print(f"关注: {data['following']}")
+    print(f"数据完整: {data['data_complete']}")

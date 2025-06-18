@@ -96,7 +96,7 @@ def extract_csdn_stats(url):
 
             print(f"\n数据已保存到 {os.path.abspath('csdn_stats.csv')}")
         else:
-            print("\nCSND数据不完整或有数据项为0，未保存到CSV文件")
+            print("\nCSND数据不完整或有数据项为0，未保存到CSV文件。所有数据项必须大于0才能保存。")
             
         return {
             "timestamp": timestamp,

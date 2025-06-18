@@ -155,7 +155,7 @@ def parse_toutiao_user_stats(url: str, page=None):
         print(f"粉丝数: {fans}")
         print(f"关注数: {follows}")
 
-        # 检查是否所有数据都获取成功
+        # 检查是否所有数据都获取成功并且大于0
         data_complete = all(x != "未找到" for x in [likes, fans, follows]) and all(int(x) > 0 for x in [likes, fans, follows] if x.isdigit())
         
         if data_complete:
@@ -170,7 +170,7 @@ def parse_toutiao_user_stats(url: str, page=None):
 
             print(f"\n数据已保存到 {os.path.abspath('toutiao_stats.csv')}")
         else:
-            print("\n数据不完整或有数据项为0，未保存到CSV文件")
+            print("\n数据不完整或有数据项为0，未保存到CSV文件。所有数据项必须大于0才能保存。")
 
         # 尝试直接提取JavaScript变量中的数据的方法 (如果上面的方法失败)
         if not data_complete:
@@ -245,7 +245,7 @@ def parse_toutiao_user_stats(url: str, page=None):
                             # 标记数据为完整
                             data_complete = True
                         else:
-                            print("\n通过JS获取的数据中有项为0，未保存到CSV文件")
+                            print("\n通过JS获取的数据中有项为0，未保存到CSV文件。所有数据项必须大于0才能保存。")
                     else:
                         if js_likes:
                             print(f"从JS中找到获赞数: {js_likes}")

@@ -210,14 +210,7 @@ class StatisticsMenuBarApp(rumps.App):
         sender.state = True
         
         # 根据选择设置更新频率
-        print(f"Debug - sender: {sender} - type: {type(sender)}")
-        print(f"Debug - self.update_5s_item: {self.update_5s_item} - type: {type(self.update_5s_item)}")
-        print(f"Debug - self.update_30s_item: {self.update_30s_item} - type: {type(self.update_30s_item)}")
-        print(f"Debug - sender == self.update_5s_item: {sender == self.update_5s_item}")
-        print(f"Debug - sender == self.update_30s_item: {sender == self.update_30s_item}")
         print(f"Debug - sender.title: {sender.title}")
-        print(f"Debug - self.update_5s_item.title: {self.update_5s_item.title}")
-        print(f"Debug - self.update_30s_item.title: {self.update_30s_item.title}")
         
         # 根据菜单项标题设置更新频率
         if sender.title == "5秒":

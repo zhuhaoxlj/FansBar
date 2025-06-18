@@ -13,6 +13,7 @@ import csv
 from datetime import datetime
 from csdn import extract_csdn_stats
 from toutiao import parse_toutiao_user_stats, init_browser
+from juejin import extract_juejin_stats
 from data_analysis import generate_analysis_page
 import settings
 
@@ -20,7 +21,8 @@ def load_config():
     """从配置文件加载URL"""
     config = {
         "CSDN_URL": "https://blog.csdn.net/qq_34598061",  # 默认URL
-        "TOUTIAO_URL": "https://www.toutiao.com/c/user/token/MS4wLjABAAAA-vxeZNtd-323uOaHVG-qQJnP0kL3_QSOTO85-9GJPXo/"  # 默认URL
+        "TOUTIAO_URL": "https://www.toutiao.com/c/user/token/MS4wLjABAAAA-vxeZNtd-323uOaHVG-qQJnP0kL3_QSOTO85-9GJPXo/",  # 默认URL
+        "JUEJIN_URL": "https://juejin.cn/user/3799544245529837/posts"  # 默认URL
     }
     
     # 尝试读取配置文件
@@ -53,6 +55,7 @@ class StatisticsMenuBarApp(rumps.App):
         # Initialize data
         self.csdn_data = None
         self.toutiao_data = None
+        self.juejin_data = None
         self.current_display = "csdn"  # Start with CSDN
         self.rotation_interval = 5  # Seconds to display each platform
         
@@ -78,6 +81,13 @@ class StatisticsMenuBarApp(rumps.App):
         self.toutiao_likes_item = rumps.MenuItem("获赞: 加载中...")
         self.toutiao_fans_item = rumps.MenuItem("粉丝: 加载中...")
         self.toutiao_follows_item = rumps.MenuItem("关注: 加载中...")
+        
+        # 新增掘金菜单项
+        self.juejin_details_menu = rumps.MenuItem("掘金详细数据")
+        self.juejin_likes_item = rumps.MenuItem("点赞: 加载中...")
+        self.juejin_reads_item = rumps.MenuItem("阅读: 加载中...")
+        self.juejin_following_item = rumps.MenuItem("关注了: 加载中...")
+        self.juejin_followers_item = rumps.MenuItem("关注者: 加载中...")
         
         # 专注模式菜单
         self.focus_mode_item = rumps.MenuItem("专注模式", callback=self.toggle_focus_mode)
@@ -141,10 +151,17 @@ class StatisticsMenuBarApp(rumps.App):
         self.toutiao_details_menu.add(self.toutiao_fans_item)
         self.toutiao_details_menu.add(self.toutiao_follows_item)
         
+        # 添加掘金子菜单项
+        self.juejin_details_menu.add(self.juejin_likes_item)
+        self.juejin_details_menu.add(self.juejin_reads_item)
+        self.juejin_details_menu.add(self.juejin_following_item)
+        self.juejin_details_menu.add(self.juejin_followers_item)
+        
         # Configure menu - 完全清除默认菜单并使用我们自己的菜单项
         self.menu.clear()  # 清除默认菜单
         self.menu.add(self.csdn_details_menu)
         self.menu.add(self.toutiao_details_menu)
+        self.menu.add(self.juejin_details_menu)  # 添加掘金菜单
         self.menu.add(None)  # 分隔符
         self.menu.add(self.data_analysis_item)
         self.menu.add(None)  # 分隔符
@@ -325,109 +342,116 @@ class StatisticsMenuBarApp(rumps.App):
             print(traceback.format_exc())
     
     def rotate_display(self):
-        """Rotate between CSDN and Toutiao data in the menu bar"""
+        """轮换显示不同平台的粉丝数"""
         while True:
-            if not self.focus_mode_enabled:  # 只在非专注模式下更新
-                if self.current_display == "csdn" and self.csdn_data and self.csdn_data.get("data_complete", False):
-                    self.title = f"CSDN: {self.csdn_data['followers']}"
+            if not self.focus_mode_enabled:
+                if self.current_display == "csdn" and self.toutiao_data:
                     self.current_display = "toutiao"
-                elif self.current_display == "toutiao" and self.toutiao_data and self.toutiao_data.get("data_complete", False):
-                    self.title = f"头条: {self.toutiao_data['fans']}"
+                elif self.current_display == "toutiao" and self.juejin_data:
+                    self.current_display = "juejin"
+                elif self.current_display == "juejin" and self.csdn_data:
                     self.current_display = "csdn"
+                else:
+                    self.current_display = "csdn"
+                self.update_menu_items()
             time.sleep(self.rotation_interval)
     
     def update_menu_items(self):
-        """Update the menu items with current data"""
-        if self.csdn_data:
-            self.csdn_visitors_item.title = f"访问量: {self.csdn_data['visitors']}"
-            self.csdn_originals_item.title = f"原创: {self.csdn_data['originals']}"
-            self.csdn_followers_item.title = f"粉丝: {self.csdn_data['followers']}"
-            self.csdn_following_item.title = f"关注: {self.csdn_data['following']}"
-            
-        if self.toutiao_data:
-            self.toutiao_likes_item.title = f"获赞: {self.toutiao_data['likes']}"
-            self.toutiao_fans_item.title = f"粉丝: {self.toutiao_data['fans']}"
-            self.toutiao_follows_item.title = f"关注: {self.toutiao_data['follows']}"
+        """根据当前数据更新菜单项显示"""
+        if not self.focus_mode_enabled:
+            if self.current_display == "csdn" and self.csdn_data:
+                self.title = f"CSDN粉丝: {self.csdn_data['followers']}"
+            elif self.current_display == "toutiao" and self.toutiao_data:
+                self.title = f"头条粉丝: {self.toutiao_data['followers']}"
+            elif self.current_display == "juejin" and self.juejin_data:
+                self.title = f"掘金粉丝: {self.juejin_data['followers']}"
+            else:
+                self.title = "获取中..."
     
     def collect_data(self):
-        """Collect data from both platforms"""
+        """收集所有平台的数据"""
+        # 获取CSDN数据
         try:
-            # CSDN data
-            csdn_url = self.config.get("CSDN_URL")
-            self.csdn_data = extract_csdn_stats(csdn_url)
-            
-            if self.csdn_data and self.csdn_data.get("data_complete", False):
+            print("\n正在获取CSDN数据...")
+            self.csdn_data = extract_csdn_stats(self.config["CSDN_URL"])
+            if self.csdn_data and self.csdn_data["data_complete"]:
                 print(f"[CSDN] 粉丝数: {self.csdn_data['followers']} (数据完整)")
-            else:
-                print("[CSDN] 数据不完整，未保存")
-            
-            # Toutiao data
-            toutiao_url = self.config.get("TOUTIAO_URL")
-            
-            # 检查浏览器实例是否可用，如果不可用则重新初始化
-            if self.browser is None:
-                self.init_browser()
                 
-            # 使用持久化的浏览器实例获取头条数据
-            self.toutiao_data = parse_toutiao_user_stats(toutiao_url, self.browser)
-            
-            if self.toutiao_data and self.toutiao_data.get("data_complete", False):
-                print(f"[头条] 粉丝数: {self.toutiao_data['fans']} (数据完整)")
-            elif self.toutiao_data:
-                print(f"[头条] 数据不完整，未保存")
+                # 更新CSDN菜单项
+                self.csdn_visitors_item.title = f"访问量: {self.csdn_data['visitors']}"
+                self.csdn_originals_item.title = f"原创: {self.csdn_data['originals']}"
+                self.csdn_followers_item.title = f"粉丝: {self.csdn_data['followers']}"
+                self.csdn_following_item.title = f"关注: {self.csdn_data['following']}"
             else:
-                print("获取头条数据失败，尝试重新初始化浏览器")
-                # 如果获取数据失败，尝试重新初始化浏览器
-                if self.browser:
-                    try:
-                        self.browser.quit()
-                    except:
-                        pass
-                self.init_browser()
-                if self.browser:
-                    # 再次尝试获取数据
-                    self.toutiao_data = parse_toutiao_user_stats(toutiao_url, self.browser)
-                    if self.toutiao_data and self.toutiao_data.get("data_complete", False):
-                        print(f"[头条] 粉丝数: {self.toutiao_data['fans']} (数据完整)")
-                    elif self.toutiao_data:
-                        print(f"[头条] 数据不完整，未保存")
-            
-            # Update menu items with new data
-            self.update_menu_items()
-            
-            # 记录最后更新时间
-            settings.update_setting("last_update", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-            
-            # Update title immediately after collection
-            if not self.focus_mode_enabled:  # 只在非专注模式下更新标题
-                if self.current_display == "csdn" and self.csdn_data and self.csdn_data.get("data_complete", False):
-                    self.title = f"CSDN: {self.csdn_data['followers']}"
-                elif self.current_display == "toutiao" and self.toutiao_data and self.toutiao_data.get("data_complete", False):
-                    self.title = f"头条: {self.toutiao_data['fans']}"
-            
-            # 只有当两个平台的数据都完整时，才显示通知
-            csdn_data_complete = self.csdn_data and self.csdn_data.get("data_complete", False)
-            toutiao_data_complete = self.toutiao_data and self.toutiao_data.get("data_complete", False)
-            
-            # Try to show notification when data is updated
-            if not self.focus_mode_enabled and (csdn_data_complete or toutiao_data_complete):  # 只在非专注模式下显示通知
-                try:
-                    csdn_fans = self.csdn_data['followers'] if csdn_data_complete else "未获取"
-                    toutiao_fans = self.toutiao_data['fans'] if toutiao_data_complete else "未获取"
-                    
-                    rumps.notification(
-                        title="数据已更新", 
-                        subtitle="粉丝统计", 
-                        message=f"CSDN: {csdn_fans} 粉丝, 头条: {toutiao_fans} 粉丝"
-                    )
-                except Exception as e:
-                    print(f"无法显示通知: {e}")
-                    # 通知失败不影响主要功能
-            
+                print("[CSDN] 数据不完整或获取失败")
+                if not self.csdn_data:
+                    self.csdn_data = {
+                        "followers": "Error",
+                        "data_complete": False
+                    }
         except Exception as e:
-            print(f"Error collecting data: {e}")
-            import traceback
-            print(traceback.format_exc())
+            print(f"获取CSDN数据时出错: {e}")
+            self.csdn_data = {
+                "followers": "Error",
+                "data_complete": False
+            }
+            
+        # 获取头条数据
+        try:
+            print("\n正在获取头条数据...")
+            self.toutiao_data = parse_toutiao_user_stats(self.config["TOUTIAO_URL"], page=self.browser)
+            if self.toutiao_data and self.toutiao_data.get("data_complete", False):
+                print(f"[头条] 粉丝数: {self.toutiao_data['followers']} (数据完整)")
+                
+                # 更新头条菜单项
+                self.toutiao_likes_item.title = f"获赞: {self.toutiao_data['likes']}"
+                self.toutiao_fans_item.title = f"粉丝: {self.toutiao_data['followers']}"
+                self.toutiao_follows_item.title = f"关注: {self.toutiao_data['following']}"
+            else:
+                print("[头条] 数据不完整或获取失败")
+                if not self.toutiao_data:
+                    self.toutiao_data = {
+                        "followers": "Error",
+                        "data_complete": False
+                    }
+        except Exception as e:
+            print(f"获取头条数据时出错: {e}")
+            self.toutiao_data = {
+                "followers": "Error",
+                "data_complete": False
+            }
+            
+        # 获取掘金数据
+        try:
+            print("\n正在获取掘金数据...")
+            self.juejin_data = extract_juejin_stats(self.config["JUEJIN_URL"])
+            if self.juejin_data and self.juejin_data.get("data_complete", False):
+                print(f"[掘金] 关注者: {self.juejin_data['followers']} (数据完整)")
+                
+                # 更新掘金菜单项
+                self.juejin_likes_item.title = f"点赞: {self.juejin_data['likes']}"
+                self.juejin_reads_item.title = f"阅读: {self.juejin_data['reads']}"
+                self.juejin_following_item.title = f"关注了: {self.juejin_data['following']}"
+                self.juejin_followers_item.title = f"关注者: {self.juejin_data['followers']}"
+            else:
+                print("[掘金] 数据不完整或获取失败")
+                if not self.juejin_data:
+                    self.juejin_data = {
+                        "followers": "Error",
+                        "data_complete": False
+                    }
+        except Exception as e:
+            print(f"获取掘金数据时出错: {e}")
+            self.juejin_data = {
+                "followers": "Error",
+                "data_complete": False
+            }
+        
+        # 更新最后更新时间
+        settings.update_setting("last_update", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        
+        # 更新显示
+        self.update_menu_items()
     
     def collect_data_periodically(self):
         """Collect data periodically"""

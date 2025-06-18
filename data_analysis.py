@@ -39,15 +39,16 @@ def read_csv_data(file_path):
         
     return timestamps, values
 
-def generate_html(csdn_data, toutiao_data):
+def generate_html(csdn_data, toutiao_data, juejin_data):
     """生成包含 echarts 图表的 HTML 页面"""
     
     # 提取数据
     csdn_timestamps, csdn_values = csdn_data
     toutiao_timestamps, toutiao_values = toutiao_data
+    juejin_timestamps, juejin_values = juejin_data
     
     # 为了保持图表数据的完整性，找到两个数据集的最早和最晚的时间戳
-    all_timestamps = csdn_timestamps + toutiao_timestamps
+    all_timestamps = csdn_timestamps + toutiao_timestamps + juejin_timestamps
     
     # 如果没有数据，返回错误提示页面
     if not all_timestamps:
@@ -74,16 +75,29 @@ def generate_html(csdn_data, toutiao_data):
         except (ValueError, IndexError):
             continue
     
+    juejin_data_pairs = []
+    for i, ts in enumerate(juejin_timestamps):
+        try:
+            # 解析时间戳
+            dt = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
+            value = int(juejin_values[i]) if juejin_values[i].isdigit() else 0
+            juejin_data_pairs.append([dt.strftime("%Y-%m-%d %H:%M:%S"), value])
+        except (ValueError, IndexError):
+            continue
+    
     # 计算百分比变化（基于所有数据）
     csdn_values_int = [pair[1] for pair in csdn_data_pairs]
     toutiao_values_int = [pair[1] for pair in toutiao_data_pairs]
+    juejin_values_int = [pair[1] for pair in juejin_data_pairs]
     
     csdn_change = calculate_change(csdn_values_int)
     toutiao_change = calculate_change(toutiao_values_int)
+    juejin_change = calculate_change(juejin_values_int)
     
     # 准备 echarts 数据
     csdn_data_json = json.dumps(csdn_data_pairs)
     toutiao_data_json = json.dumps(toutiao_data_pairs)
+    juejin_data_json = json.dumps(juejin_data_pairs)
     
     # 生成 HTML
     html = f"""
@@ -254,12 +268,23 @@ def generate_html(csdn_data, toutiao_data):
                 </div>
             </div>
             <div class="stat-card">
+                <div class="stat-title">JueJin 当前粉丝数</div>
+                <div class="stat-value">{juejin_values_int[-1] if juejin_values_int else 'N/A'}</div>
+                <div class="stat-change {get_change_class(juejin_change)}">
+                    {format_change(juejin_change)}
+                </div>
+            </div>
+            <div class="stat-card">
                 <div class="stat-title">CSDN 数据点</div>
                 <div class="stat-value">{len(csdn_values_int)}</div>
             </div>
             <div class="stat-card">
                 <div class="stat-title">头条 数据点</div>
                 <div class="stat-value">{len(toutiao_values_int)}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">JueJin 数据点</div>
+                <div class="stat-value">{len(juejin_values_int)}</div>
             </div>
         </div>
         
@@ -295,6 +320,16 @@ def generate_html(csdn_data, toutiao_data):
                 </div>
                 <div class="chart" id="toutiaoChart"></div>
             </div>
+            <div class="chart-card">
+                <div class="time-filter" id="juejinTimeFilter">
+                    <button class="time-btn active" data-range="all">所有数据</button>
+                    <button class="time-btn" data-range="month">近一月</button>
+                    <button class="time-btn" data-range="week">近一周</button>
+                    <button class="time-btn" data-range="3days">近三天</button>
+                    <button class="time-btn" data-range="today">今日</button>
+                </div>
+                <div class="chart" id="juejinChart"></div>
+            </div>
         </div>
         
         <div class="footer">
@@ -306,10 +341,12 @@ def generate_html(csdn_data, toutiao_data):
         // 所有原始数据
         var csdnData = {csdn_data_json};
         var toutiaoData = {toutiao_data_json};
+        var juejinData = {juejin_data_json};
         
         // 初始化图表
         var csdnChart = echarts.init(document.getElementById('csdnChart'));
         var toutiaoChart = echarts.init(document.getElementById('toutiaoChart'));
+        var juejinChart = echarts.init(document.getElementById('juejinChart'));
         var combinedChart = echarts.init(document.getElementById('combinedChart'));
         
         // 根据时间范围筛选数据
@@ -532,16 +569,112 @@ def generate_html(csdn_data, toutiao_data):
             toutiaoChart.setOption(toutiaoOption, true);
         }}
         
+        // 绘制JueJin图表
+        function drawJueJinChart(range) {{
+            var filteredData = filterDataByRange(juejinData, range);
+            
+            if (filteredData.length === 0) {{
+                // 如果筛选后没有数据，显示提示信息
+                juejinChart.setOption({{
+                    title: {{
+                        text: 'JueJin 粉丝趋势 - 选定时间段无数据',
+                        left: 'center'
+                    }},
+                    graphic: [
+                        {{
+                            type: 'text',
+                            left: 'center',
+                            top: 'middle',
+                            style: {{
+                                text: '选定的时间段内没有数据',
+                                fontSize: 20,
+                                fill: '#999'
+                            }}
+                        }}
+                    ]
+                }});
+                return;
+            }}
+            
+            var juejinOption = {{
+                title: {{
+                    text: 'JueJin 粉丝趋势',
+                    left: 'center'
+                }},
+                tooltip: {{
+                    trigger: 'axis',
+                    formatter: function(params) {{
+                        var date = new Date(params[0].value[0]);
+                        return date.toLocaleDateString() + ' ' + date.toLocaleTimeString() + '<br/>' +
+                               params[0].marker + ' 粉丝数: ' + params[0].value[1];
+                    }}
+                }},
+                xAxis: {{
+                    type: 'time',
+                    axisLabel: {{
+                        formatter: function(value) {{
+                            var date = new Date(value);
+                            return date.getMonth() + 1 + '/' + date.getDate();
+                        }}
+                    }}
+                }},
+                yAxis: {{
+                    type: 'value',
+                    name: '粉丝数',
+                    nameTextStyle: {{
+                        padding: [0, 0, 0, 40]
+                    }}
+                }},
+                series: [
+                    {{
+                        name: 'JueJin 粉丝',
+                        type: 'line',
+                        smooth: true,
+                        symbol: 'circle',
+                        symbolSize: 6,
+                        lineStyle: {{
+                            color: '#FF9F43',
+                            width: 3
+                        }},
+                        itemStyle: {{
+                            color: '#FF9F43'
+                        }},
+                        areaStyle: {{
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                {{
+                                    offset: 0,
+                                    color: 'rgba(255, 159, 67, 0.5)'
+                                }},
+                                {{
+                                    offset: 1,
+                                    color: 'rgba(255, 159, 67, 0.1)'
+                                }}
+                            ])
+                        }},
+                        data: filteredData.map(function(item) {{ return [item[0], item[1]]; }})
+                    }}
+                ],
+                toolbox: {{
+                    feature: {{
+                        saveAsImage: {{}}
+                    }}
+                }}
+            }};
+            
+            juejinChart.setOption(juejinOption, true);
+        }}
+        
         // 绘制组合图表
         function drawCombinedChart(range) {{
             var filteredCSDNData = filterDataByRange(csdnData, range);
             var filteredToutiaoData = filterDataByRange(toutiaoData, range);
+            var filteredJueJinData = filterDataByRange(juejinData, range);
             
-            if (filteredCSDNData.length === 0 && filteredToutiaoData.length === 0) {{
+            if (filteredCSDNData.length === 0 && filteredToutiaoData.length === 0 && filteredJueJinData.length === 0) {{
                 // 如果筛选后没有数据，显示提示信息
                 combinedChart.setOption({{
                     title: {{
-                        text: 'CSDN vs 头条 粉丝数对比 - 选定时间段无数据',
+                        text: 'CSDN vs 头条 vs JueJin 粉丝数对比 - 选定时间段无数据',
                         left: 'center'
                     }},
                     graphic: [
@@ -562,7 +695,7 @@ def generate_html(csdn_data, toutiao_data):
             
             var combinedOption = {{
                 title: {{
-                    text: 'CSDN vs 头条 粉丝数对比',
+                    text: 'CSDN vs 头条 vs JueJin 粉丝数对比',
                     left: 'center'
                 }},
                 tooltip: {{
@@ -583,7 +716,7 @@ def generate_html(csdn_data, toutiao_data):
                     }}
                 }},
                 legend: {{
-                    data: ['CSDN 粉丝', '头条 粉丝'],
+                    data: ['CSDN 粉丝', '头条 粉丝', 'JueJin 粉丝'],
                     top: 30
                 }},
                 grid: {{
@@ -634,6 +767,18 @@ def generate_html(csdn_data, toutiao_data):
                             color: '#FF9F43'
                         }},
                         data: filteredToutiaoData.map(function(item) {{ return [item[0], item[1]]; }})
+                    }},
+                    {{
+                        name: 'JueJin 粉丝',
+                        type: 'line',
+                        smooth: true,
+                        symbol: 'circle',
+                        symbolSize: 8,
+                        lineStyle: {{
+                            width: 3,
+                            color: '#FF9F43'
+                        }},
+                        data: filteredJueJinData.map(function(item) {{ return [item[0], item[1]]; }})
                     }}
                 ]
             }};
@@ -669,6 +814,19 @@ def generate_html(csdn_data, toutiao_data):
                 }});
             }});
             
+            // JueJin图表的时间筛选
+            var juejinFilterButtons = document.querySelectorAll('#juejinTimeFilter .time-btn');
+            juejinFilterButtons.forEach(function(btn) {{
+                btn.addEventListener('click', function() {{
+                    // 移除所有按钮的active类
+                    juejinFilterButtons.forEach(function(b) {{ b.classList.remove('active'); }});
+                    // 给当前点击的按钮添加active类
+                    this.classList.add('active');
+                    // 根据选择的时间范围重新绘制图表
+                    drawJueJinChart(this.getAttribute('data-range'));
+                }});
+            }});
+            
             // 组合图表的时间筛选
             var combinedFilterButtons = document.querySelectorAll('#combinedTimeFilter .time-btn');
             combinedFilterButtons.forEach(function(btn) {{
@@ -687,6 +845,7 @@ def generate_html(csdn_data, toutiao_data):
         function initCharts() {{
             drawCSDNChart('all');
             drawToutiaoChart('all');
+            drawJueJinChart('all');
             drawCombinedChart('all');
             setupTimeFilters();
         }}
@@ -695,6 +854,7 @@ def generate_html(csdn_data, toutiao_data):
         window.addEventListener('resize', function() {{
             csdnChart.resize();
             toutiaoChart.resize();
+            juejinChart.resize();
             combinedChart.resize();
         }});
         
@@ -823,9 +983,10 @@ def generate_analysis_page():
     # 读取数据
     csdn_data = read_csv_data('csdn_stats.csv')
     toutiao_data = read_csv_data('toutiao_stats.csv')
+    juejin_data = read_csv_data('juejin_stats.csv')
     
     # 生成HTML
-    html_content = generate_html(csdn_data, toutiao_data)
+    html_content = generate_html(csdn_data, toutiao_data, juejin_data)
     
     # 保存HTML文件
     output_file = 'fans_data_analysis.html'

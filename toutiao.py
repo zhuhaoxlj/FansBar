@@ -14,20 +14,18 @@ import re
 import platform
 import random
 from bs4 import BeautifulSoup
+import datetime
 
-def parse_toutiao_user_stats():
+def parse_toutiao_user_stats(url: str):
     """
     使用DrissionPage获取头条用户页面并解析用户数据
     """
-    # 目标URL
-    url = "https://www.toutiao.com/c/user/token/MS4wLjABAAAAYd06xjdpZljEG3tiHeqEreoftdwWiWgqy-8K5cur014/"
-    
     # 第一部分：配置浏览器选项
     co = ChromiumOptions()
-    
+
     # 关闭无头模式，头条网站会检测无头浏览器
     co.headless(True)  # 改为非无头模式，减少被检测概率
-    
+
     # 设置常见的用户代理
     user_agents = [
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -35,28 +33,28 @@ def parse_toutiao_user_stats():
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
     ]
     co.set_user_agent(random.choice(user_agents))
-    
+
     # 禁用自动化特性检测
     co.set_pref("excludeSwitches", ["enable-automation"])
     co.set_pref("useAutomationExtension", False)
     co.set_argument("--disable-blink-features=AutomationControlled")
-    
+
     # 系统特定配置
     if platform.system() == "Darwin":  # macOS
         co.set_argument("--no-sandbox")
         co.set_argument("--disable-gpu")
-    
+
     # 添加一些真实浏览器的特性
     co.set_argument("--disable-notifications")
     co.set_argument("--disable-popup-blocking")
     co.set_pref("credentials_enable_service", False)
     co.set_pref("profile.password_manager_enabled", False)
     co.auto_port(True)
-    
+
     # 如果要使用无头模式，需要模拟真实浏览器
     # 方案1: 使用新的无头模式(需要较新版本Chrome)
     # co.set_argument("--headless=new")
-    
+
     # 方案2: 使用传统无头模式但添加伪装，uncomment下面这段开启无头模式
     """
     co.headless(True)
@@ -66,20 +64,20 @@ def parse_toutiao_user_stats():
     co.set_argument("--window-size=1920,1080")
     co.set_argument("--start-maximized")
     """
-    
+
     try:
         # 第二部分：启动浏览器
         print("正在启动浏览器...")
         page = ChromiumPage(co)
-        
+
         print("正在访问头条用户页面...")
         # 访问页面
         page.get(url)
-        
+
         # 增强等待机制
         print("等待页面加载完成...")
         page.wait.doc_loaded()
-        
+
         # 检查页面是否已加载成功
         try:
             # 等待页面上某个可能的固定元素出现
@@ -87,9 +85,9 @@ def parse_toutiao_user_stats():
         except errors.TimeoutError:
             print("页面加载超时，正在重试...")
             page.refresh()
-            time.sleep(0.1)
+            time.sleep(3)
             page.wait.doc_loaded()
-        
+
         # 执行一些随机滚动，模拟真实用户行为
         print("模拟页面交互...")
         try:
@@ -112,50 +110,54 @@ def parse_toutiao_user_stats():
         except Exception as e:
             print(f"滚动页面时出错: {e}")
             # 继续执行，不中断流程
-        
+
         # 获取页面源码
         html_source = page.html
-        
+
         # 将源码保存到文件（可选）
         with open('toutiao_page_source.html', 'w', encoding='utf-8') as f:
             f.write(html_source)
-        
+
         print(f"页面源码已保存到 {os.path.abspath('toutiao_page_source.html')}")
-        
+
         # 使用BeautifulSoup解析HTML
         soup = BeautifulSoup(html_source, 'lxml')
-        
+
         # 方法1: 直接尝试从页面元素中获取数据
         # 尝试找到包含数据的容器元素
         text = soup.get_text()
-        
+
         # 使用正则表达式提取数字
         likes_match = re.search(r'(\d+)\s*获赞', text)
         fans_match = re.search(r'(\d+)\s*粉丝', text)
         follows_match = re.search(r'(\d+)\s*关注', text)
-        
+
         # 提取数字
         likes = likes_match.group(1) if likes_match else "未找到"
         fans = fans_match.group(1) if fans_match else "未找到"
         follows = follows_match.group(1) if follows_match else "未找到"
-        
+
         # 输出结果
         print("\n用户数据:")
         print(f"获赞数: {likes}")
         print(f"粉丝数: {fans}")
         print(f"关注数: {follows}")
+
+        # 检查文件是否存在
+        file_exists = os.path.isfile('toutiao_stats.csv')
         
-        # 将数据保存到CSV文件
-        with open('toutiao_user_stats.csv', 'w', encoding='utf-8') as f:
-            f.write("获赞数,粉丝数,关注数\n")
-            f.write(f"{likes},{fans},{follows}\n")
-            
-        print(f"\n数据已保存到 {os.path.abspath('toutiao_user_stats.csv')}")
-        
+        # 将数据保存到CSV文件，如果文件不存在，则创建文件并写入标题行，如果存在，则只追加数据
+        with open('toutiao_stats.csv', 'a', encoding='utf-8') as f:
+            if not file_exists:
+                f.write("更新时间,获赞数,粉丝数,关注数\n")
+            f.write(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')},{likes},{fans},{follows}\n")
+
+        print(f"\n数据已保存到 {os.path.abspath('toutiao_stats.csv')}")
+
         # 尝试直接提取JavaScript变量中的数据的方法 (如果上面的方法失败)
         if likes == "未找到" or fans == "未找到" or follows == "未找到":
             print("\n尝试从JavaScript变量中提取数据...")
-            
+
             try:
                 # 使用页面的JavaScript获取数据，添加错误处理
                 js_user_data = page.run_js("""
@@ -187,13 +189,16 @@ def parse_toutiao_user_stats():
                     return "JS错误: " + e.toString();
                 }
                 """)
-                
+
                 if js_user_data and not js_user_data.startswith("JS错误"):
                     print("从JS中提取的数据:")
-                    likes_js = re.search(r'"like_count"\s*:\s*(\d+)', js_user_data)
-                    fans_js = re.search(r'"fans_count"\s*:\s*(\d+)', js_user_data)
-                    follows_js = re.search(r'"follow_count"\s*:\s*(\d+)', js_user_data)
-                    
+                    likes_js = re.search(
+                        r'"like_count"\s*:\s*(\d+)', js_user_data)
+                    fans_js = re.search(
+                        r'"fans_count"\s*:\s*(\d+)', js_user_data)
+                    follows_js = re.search(
+                        r'"follow_count"\s*:\s*(\d+)', js_user_data)
+
                     if likes_js:
                         print(f"从JS中找到获赞数: {likes_js.group(1)}")
                     if fans_js:
@@ -204,13 +209,14 @@ def parse_toutiao_user_stats():
                 print("执行JS提取数据时页面刷新，无法获取JS数据")
             except Exception as e:
                 print(f"执行JS提取数据时出错: {e}")
-        
+
         return {
+            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "likes": likes,
             "fans": fans,
             "follows": follows
         }
-        
+
     except Exception as e:
         print(f"解析页面时出错: {e}")
         import traceback
@@ -225,6 +231,9 @@ def parse_toutiao_user_stats():
                 print("浏览器已关闭！")
         except:
             pass
-        
+
+
 if __name__ == "__main__":
-    parse_toutiao_user_stats() 
+    # 默认头条用户URL
+    default_url = "https://www.toutiao.com/c/user/token/MS4wLjABAAAAYd06xjdpZljEG3tiHeqEreoftdwWiWgqy-8K5cur014/?source=error_page&log_from=4391bdbae93908_1750259642835"
+    parse_toutiao_user_stats(default_url)

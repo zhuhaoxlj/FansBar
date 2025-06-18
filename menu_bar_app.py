@@ -362,7 +362,7 @@ class StatisticsMenuBarApp(rumps.App):
             if self.current_display == "csdn" and self.csdn_data:
                 self.title = f"CSDN粉丝: {self.csdn_data['followers']}"
             elif self.current_display == "toutiao" and self.toutiao_data:
-                self.title = f"头条粉丝: {self.toutiao_data['followers']}"
+                self.title = f"头条粉丝: {self.toutiao_data['fans']}"
             elif self.current_display == "juejin" and self.juejin_data:
                 self.title = f"掘金粉丝: {self.juejin_data['followers']}"
             else:
@@ -401,23 +401,27 @@ class StatisticsMenuBarApp(rumps.App):
             print("\n正在获取头条数据...")
             self.toutiao_data = parse_toutiao_user_stats(self.config["TOUTIAO_URL"], page=self.browser)
             if self.toutiao_data and self.toutiao_data.get("data_complete", False):
-                print(f"[头条] 粉丝数: {self.toutiao_data['followers']} (数据完整)")
+                print(f"[头条] 粉丝数: {self.toutiao_data['fans']} (数据完整)")
                 
                 # 更新头条菜单项
                 self.toutiao_likes_item.title = f"获赞: {self.toutiao_data['likes']}"
-                self.toutiao_fans_item.title = f"粉丝: {self.toutiao_data['followers']}"
-                self.toutiao_follows_item.title = f"关注: {self.toutiao_data['following']}"
+                self.toutiao_fans_item.title = f"粉丝: {self.toutiao_data['fans']}"
+                self.toutiao_follows_item.title = f"关注: {self.toutiao_data['follows']}"
             else:
                 print("[头条] 数据不完整或获取失败")
                 if not self.toutiao_data:
                     self.toutiao_data = {
-                        "followers": "Error",
+                        "fans": "Error",
+                        "likes": "Error",
+                        "follows": "Error",
                         "data_complete": False
                     }
         except Exception as e:
             print(f"获取头条数据时出错: {e}")
             self.toutiao_data = {
-                "followers": "Error",
+                "fans": "Error",
+                "likes": "Error",
+                "follows": "Error",
                 "data_complete": False
             }
             

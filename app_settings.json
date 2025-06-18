@@ -1,6 +1,6 @@
 {
-  "update_interval": 60,
-  "update_interval_name": "60秒",
+  "update_interval": 5,
+  "update_interval_name": "5秒",
   "focus_mode": false,
-  "last_update": "2025-06-19 01:39:57"
+  "last_update": "2025-06-19 01:56:23"
 }

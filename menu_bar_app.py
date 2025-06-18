@@ -14,12 +14,35 @@ from datetime import datetime
 from csdn import extract_csdn_stats
 from toutiao import parse_toutiao_user_stats
 
-toutiao_url = "https://www.toutiao.com/c/user/token/MS4wLjABAAAAYd06xjdpZljEG3tiHeqEreoftdwWiWgqy-8K5cur014/?source=tuwen_detail&entrance_gid=7517216151676568116&log_from=dc1886426211a8_1750259763904"
-csdn_url = "https://blog.csdn.net/qq_34598061"
+def load_config():
+    """从配置文件加载URL"""
+    config = {
+        "CSDN_URL": "https://blog.csdn.net/qq_34598061",  # 默认URL
+        "TOUTIAO_URL": "https://www.toutiao.com/c/user/token/MS4wLjABAAAA-vxeZNtd-323uOaHVG-qQJnP0kL3_QSOTO85-9GJPXo/"  # 默认URL
+    }
+    
+    # 尝试读取配置文件
+    try:
+        config_file = 'config.env'
+        if os.path.exists(config_file):
+            with open(config_file, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#'):
+                        key, value = line.split('=', 1)
+                        config[key.strip()] = value.strip()
+            print(f"已从{config_file}加载配置")
+    except Exception as e:
+        print(f"无法加载配置文件: {e}")
+    
+    return config
 
 class StatisticsMenuBarApp(rumps.App):
     def __init__(self):
         super(StatisticsMenuBarApp, self).__init__("Stats")
+        
+        # 加载配置
+        self.config = load_config()
         
         # Initialize data
         self.csdn_data = None
@@ -95,10 +118,12 @@ class StatisticsMenuBarApp(rumps.App):
         """Collect data from both platforms"""
         try:
             # CSDN data
+            csdn_url = self.config.get("CSDN_URL")
             self.csdn_data = extract_csdn_stats(csdn_url)
             print(f"[CSDN] 粉丝数: {self.csdn_data['followers']}")
             
             # Toutiao data
+            toutiao_url = self.config.get("TOUTIAO_URL")
             self.toutiao_data = parse_toutiao_user_stats(toutiao_url)
             if self.toutiao_data:
                 print(f"[头条] 粉丝数: {self.toutiao_data['fans']}")

@@ -19,6 +19,22 @@ A Python tool that monitors web page statistics and displays them in your macOS 
 pip install -r requirements.txt
 ```
 
+## Configuration
+
+The application uses a configuration file (`config.env`) to store URLs for CSDN and Toutiao platforms. You can edit this file to customize the URLs.
+
+Default configuration:
+```
+# CSDN 个人主页
+CSDN_URL=https://blog.csdn.net/qq_34598061?type=blog
+# 今日头条个人主页
+TOUTIAO_URL=https://www.toutiao.com/c/user/token/MS4wLjABAAAAYd06xjdpZljEG3tiHeqEreoftdwWiWgqy-8K5cur014/?source=tuwen_detail&entrance_gid=7517216151676568116&log_from=dc1886426211a8_1750259763904 
+```
+
+您可以通过以下方法获取配置URL：
+1. CSDN URL: 访问您的CSDN博客主页，复制地址栏的URL
+2. 头条URL: 访问您的头条账号主页，复制地址栏的URL
+
 ## Usage
 
 ### Command Line Usage
@@ -44,7 +60,7 @@ python menu_bar_app.py
 ```
 
 This will:
-- Create a menu bar icon in your macOS status bar (📊)
+- Create a menu bar icon in your macOS status bar
 - Automatically fetch data from both platforms
 - Display the follower counts for CSDN and Toutiao, rotating between them
 - Allow you to manually update data through the menu
@@ -52,14 +68,25 @@ This will:
 
 #### Menu Bar Options
 
+- **CSDN详细数据**: View detailed CSDN statistics (visitors, original posts, followers, following)
+- **头条详细数据**: View detailed Toutiao statistics (likes, fans, follows)
 - **更新数据**: Manually update the statistics from both platforms
-- **退出**: Quit the menu bar application
 
 ## Customization
 
-- To change the user URLs, edit the URL variables in the scripts
+- To change the user URLs, edit the `config.env` file
 - To change the rotation interval, modify the `rotation_interval` value in the `StatisticsMenuBarApp` class
 - To change the update frequency, modify the sleep duration in the `collect_data_periodically` method
+
+## First-time Setup for Notifications
+
+To enable system notifications, you may need to create an Info.plist file:
+
+```
+./create_plist.sh
+```
+
+This script will create the necessary Info.plist file with CFBundleIdentifier for rumps to send notifications.
 
 ## Requirements
 

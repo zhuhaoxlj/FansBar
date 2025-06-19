@@ -114,6 +114,8 @@ class StatisticsMenuBarApp(rumps.App):
         self.update_60s_item = rumps.MenuItem("60秒", callback=self.set_update_interval)
         self.update_5min_item = rumps.MenuItem("5分钟", callback=self.set_update_interval)
         self.update_30min_item = rumps.MenuItem("30分钟", callback=self.set_update_interval)
+        self.update_1h_item = rumps.MenuItem("1小时", callback=self.set_update_interval)
+        self.update_2h_item = rumps.MenuItem("2小时", callback=self.set_update_interval)
         
         # 设置默认选中的更新频率（从设置加载）
         interval_name = self.app_settings.get("update_interval_name", "30分钟")
@@ -124,6 +126,8 @@ class StatisticsMenuBarApp(rumps.App):
         self.update_60s_item.state = False
         self.update_5min_item.state = False
         self.update_30min_item.state = False
+        self.update_1h_item.state = False
+        self.update_2h_item.state = False
         
         # 根据保存的设置选中对应的菜单项
         if interval_name == "5秒":
@@ -141,6 +145,10 @@ class StatisticsMenuBarApp(rumps.App):
                 # 更新为标准间隔
                 settings.update_setting("update_interval", 30 * 60)
                 settings.update_setting("update_interval_name", "30分钟")
+        elif interval_name == "1小时":
+            self.update_1h_item.state = True
+        elif interval_name == "2小时":
+            self.update_2h_item.state = True
         else:
             # 默认为30分钟
             self.update_30min_item.state = True
@@ -151,6 +159,8 @@ class StatisticsMenuBarApp(rumps.App):
         self.update_interval_menu.add(self.update_60s_item)
         self.update_interval_menu.add(self.update_5min_item)
         self.update_interval_menu.add(self.update_30min_item)
+        self.update_interval_menu.add(self.update_1h_item)
+        self.update_interval_menu.add(self.update_2h_item)
         
         # Add items to submenus
         self.csdn_details_menu.add(self.csdn_visitors_item)
@@ -241,12 +251,11 @@ class StatisticsMenuBarApp(rumps.App):
         self.update_60s_item.state = False
         self.update_5min_item.state = False
         self.update_30min_item.state = False
+        self.update_1h_item.state = False
+        self.update_2h_item.state = False
         
         # 设置选中状态
         sender.state = True
-        
-        # 根据选择设置更新频率
-        print(f"Debug - sender.title: {sender.title}")
         
         # 根据菜单项标题设置更新频率
         if sender.title == "5秒":
@@ -264,6 +273,12 @@ class StatisticsMenuBarApp(rumps.App):
         elif sender.title == "30分钟":
             self.update_interval = 30 * 60
             interval_text = "30分钟"
+        elif sender.title == "1小时":
+            self.update_interval = 60 * 60
+            interval_text = "1小时"
+        elif sender.title == "2小时":
+            self.update_interval = 2 * 60 * 60
+            interval_text = "2小时"
         else:
             # 默认为30分钟
             self.update_interval = 30 * 60

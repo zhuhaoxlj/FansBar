@@ -1,3 +1,16 @@
 *.csv
 *.html
 __pycache__/
+build/
+dist/
+*.spec
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+.installed.cfg
+*.egg

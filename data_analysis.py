@@ -890,7 +890,7 @@ def generate_analysis_page():
     """生成粉丝数据分析页面"""
     try:
         # 获取数据文件路径
-        data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')
+        data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
         os.makedirs(data_dir, exist_ok=True)
         
         csdn_file = os.path.join(data_dir, 'csdn_stats.csv')

@@ -116,17 +116,24 @@ def extract_juejin_stats(url):
         )
         
         if data_complete:
+            # 确保data目录存在
+            data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+            os.makedirs(data_dir, exist_ok=True)
+            
+            # 构建CSV文件路径
+            csv_file = os.path.join(data_dir, 'juejin_stats.csv')
+            
             # 检查文件是否存在，决定是否写入标题行
-            file_exists = os.path.isfile('juejin_stats.csv')
+            file_exists = os.path.isfile(csv_file)
             
             # 保存数据到CSV文件
-            with open('juejin_stats.csv', 'a', encoding='utf-8') as f:
+            with open(csv_file, 'a', encoding='utf-8') as f:
                 if not file_exists:
                     f.write("更新时间,文章点赞,文章阅读,关注了,关注者\n")
                 f.write(
                     f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')},{likes},{reads},{following},{followers}\n")
 
-            print(f"\n数据已保存到 {os.path.abspath('juejin_stats.csv')}")
+            print(f"\n数据已保存到 {os.path.abspath(csv_file)}")
         else:
             print("\n掘金数据不完整或有数据项为0，未保存到CSV文件。所有数据项必须大于0才能保存。")
             

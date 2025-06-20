@@ -84,17 +84,24 @@ def extract_csdn_stats(url):
         )
         
         if data_complete:
+            # 确保data目录存在
+            data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+            os.makedirs(data_dir, exist_ok=True)
+            
+            # 构建CSV文件路径
+            csv_file = os.path.join(data_dir, 'csdn_stats.csv')
+            
             # 检查文件是否存在，决定是否写入标题行
-            file_exists = os.path.isfile('csdn_stats.csv')
+            file_exists = os.path.isfile(csv_file)
             
             # 将数据保存到CSV文件
-            with open('csdn_stats.csv', 'a', encoding='utf-8') as f:
+            with open(csv_file, 'a', encoding='utf-8') as f:
                 if not file_exists:
                     f.write("更新时间,总访问量,原创,粉丝数,关注数\n")
                 f.write(
                     f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')},{visitor_count},{original_count},{follower_count},{following_count}\n")
 
-            print(f"\n数据已保存到 {os.path.abspath('csdn_stats.csv')}")
+            print(f"\n数据已保存到 {os.path.abspath(csv_file)}")
         else:
             print("\nCSND数据不完整或有数据项为0，未保存到CSV文件。所有数据项必须大于0才能保存。")
             

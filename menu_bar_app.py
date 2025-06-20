@@ -379,30 +379,16 @@ class StatisticsMenuBarApp(rumps.App):
         """轮换显示不同平台的粉丝数"""
         while True:
             if not self.focus_mode_enabled:
-                if self.current_display == "csdn" and self.toutiao_data:
-                    self.current_display = "toutiao"
-                elif self.current_display == "toutiao" and self.juejin_data:
-                    self.current_display = "juejin"
-                elif self.current_display == "juejin" and self.zhihu_data:
-                    self.current_display = "zhihu"
-                elif self.current_display == "zhihu" and self.csdn_data:
-                    self.current_display = "csdn"
-                else:
-                    self.current_display = "csdn"
+                # 只显示CSDN的粉丝数
+                self.current_display = "csdn"
                 self.update_menu_items()
             time.sleep(self.rotation_interval)
     
     def update_menu_items(self):
         """根据当前数据更新菜单项显示"""
         if not self.focus_mode_enabled:
-            if self.current_display == "csdn" and self.csdn_data:
+            if self.csdn_data:
                 self.title = f"CSDN粉丝: {self.csdn_data['followers']}"
-            elif self.current_display == "toutiao" and self.toutiao_data:
-                self.title = f"头条粉丝: {self.toutiao_data['fans']}"
-            elif self.current_display == "juejin" and self.juejin_data:
-                self.title = f"掘金粉丝: {self.juejin_data['followers']}"
-            elif self.current_display == "zhihu" and self.zhihu_data:
-                self.title = f"知乎粉丝: {self.zhihu_data['followers']}"
             else:
                 self.title = "获取中..."
     
@@ -430,88 +416,6 @@ class StatisticsMenuBarApp(rumps.App):
         except Exception as e:
             print(f"获取CSDN数据时出错: {e}")
             self.csdn_data = {
-                "followers": "Error",
-                "data_complete": False
-            }
-            
-        # 获取头条数据
-        try:
-            print("\n正在获取头条数据...")
-            self.toutiao_data = parse_toutiao_user_stats(self.config["TOUTIAO_URL"], page=self.browser)
-            if self.toutiao_data and self.toutiao_data.get("data_complete", False):
-                print(f"[头条] 粉丝数: {self.toutiao_data['fans']} (数据完整)")
-                
-                # 更新头条菜单项
-                self.toutiao_likes_item.title = f"获赞: {self.toutiao_data['likes']}"
-                self.toutiao_fans_item.title = f"粉丝: {self.toutiao_data['fans']}"
-                self.toutiao_follows_item.title = f"关注: {self.toutiao_data['follows']}"
-            else:
-                print("[头条] 数据不完整或获取失败")
-                if not self.toutiao_data:
-                    self.toutiao_data = {
-                        "fans": "Error",
-                        "likes": "Error",
-                        "follows": "Error",
-                        "data_complete": False
-                    }
-        except Exception as e:
-            print(f"获取头条数据时出错: {e}")
-            self.toutiao_data = {
-                "fans": "Error",
-                "likes": "Error",
-                "follows": "Error",
-                "data_complete": False
-            }
-            
-        # 获取掘金数据
-        try:
-            print("\n正在获取掘金数据...")
-            self.juejin_data = extract_juejin_stats(self.config["JUEJIN_URL"])
-            if self.juejin_data and self.juejin_data.get("data_complete", False):
-                print(f"[掘金] 关注者: {self.juejin_data['followers']} (数据完整)")
-                
-                # 更新掘金菜单项
-                self.juejin_likes_item.title = f"点赞: {self.juejin_data['likes']}"
-                self.juejin_reads_item.title = f"阅读: {self.juejin_data['reads']}"
-                self.juejin_following_item.title = f"关注了: {self.juejin_data['following']}"
-                self.juejin_followers_item.title = f"关注者: {self.juejin_data['followers']}"
-            else:
-                print("[掘金] 数据不完整或获取失败")
-                if not self.juejin_data:
-                    self.juejin_data = {
-                        "followers": "Error",
-                        "data_complete": False
-                    }
-        except Exception as e:
-            print(f"获取掘金数据时出错: {e}")
-            self.juejin_data = {
-                "followers": "Error",
-                "data_complete": False
-            }
-            
-        # 获取知乎数据
-        try:
-            print("\n正在获取知乎数据...")
-            self.zhihu_data = extract_zhihu_stats(self.config["ZHIHU_URL"], page=self.browser)
-            if self.zhihu_data and self.zhihu_data.get("data_complete", False):
-                print(f"[知乎] 关注者: {self.zhihu_data['followers']} (数据完整)")
-                
-                # 更新知乎菜单项
-                self.zhihu_upvotes_item.title = f"赞同: {self.zhihu_data['upvotes']}"
-                self.zhihu_likes_item.title = f"喜欢: {self.zhihu_data['likes']}"
-                self.zhihu_collections_item.title = f"收藏: {self.zhihu_data['collections']}"
-                self.zhihu_following_item.title = f"关注了: {self.zhihu_data['following']}"
-                self.zhihu_followers_item.title = f"关注者: {self.zhihu_data['followers']}"
-            else:
-                print("[知乎] 数据不完整或获取失败")
-                if not self.zhihu_data:
-                    self.zhihu_data = {
-                        "followers": "Error",
-                        "data_complete": False
-                    }
-        except Exception as e:
-            print(f"获取知乎数据时出错: {e}")
-            self.zhihu_data = {
                 "followers": "Error",
                 "data_complete": False
             }

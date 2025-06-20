@@ -144,11 +144,12 @@ def extract_zhihu_stats(url, page=None, html_content=None):
             
         # Save data to CSV file
         try:
-            # Ensure data directory exists
-            os.makedirs('data', exist_ok=True)
+            # 确保data目录存在
+            data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+            os.makedirs(data_dir, exist_ok=True)
             
-            # Prepare CSV file path
-            csv_file = os.path.join('data', 'zhihu_stats.csv')
+            # 构建CSV文件路径
+            csv_file = os.path.join(data_dir, 'zhihu_stats.csv')
             file_exists = os.path.isfile(csv_file)
 
             with open(csv_file, 'a', newline='', encoding='utf-8') as f:

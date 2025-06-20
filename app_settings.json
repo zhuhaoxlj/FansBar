@@ -1,6 +1,6 @@
 {
-  "update_interval": 3600,
-  "update_interval_name": "1小时",
-  "focus_mode": false,
-  "last_update": "2025-06-19 13:01:02"
+  "update_interval": 60,
+  "update_interval_name": "60秒",
+  "focus_mode": 0,
+  "last_update": "2025-06-20 21:18:45"
 }

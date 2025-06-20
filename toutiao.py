@@ -159,16 +159,23 @@ def parse_toutiao_user_stats(url: str, page=None):
         data_complete = all(x != "未找到" for x in [likes, fans, follows]) and all(int(x) > 0 for x in [likes, fans, follows] if x.isdigit())
         
         if data_complete:
+            # 确保data目录存在
+            data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+            os.makedirs(data_dir, exist_ok=True)
+            
+            # 构建CSV文件路径
+            csv_file = os.path.join(data_dir, 'toutiao_stats.csv')
+            
             # 检查文件是否存在
-            file_exists = os.path.isfile('toutiao_stats.csv')
+            file_exists = os.path.isfile(csv_file)
             
             # 将数据保存到CSV文件
-            with open('toutiao_stats.csv', 'a', encoding='utf-8') as f:
+            with open(csv_file, 'a', encoding='utf-8') as f:
                 if not file_exists:
                     f.write("更新时间,获赞数,粉丝数,关注数\n")
                 f.write(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')},{likes},{fans},{follows}\n")
 
-            print(f"\n数据已保存到 {os.path.abspath('toutiao_stats.csv')}")
+            print(f"\n数据已保存到 {os.path.abspath(csv_file)}")
         else:
             print("\n数据不完整或有数据项为0，未保存到CSV文件。所有数据项必须大于0才能保存。")
 
@@ -231,16 +238,23 @@ def parse_toutiao_user_stats(url: str, page=None):
                         all_greater_than_zero = all(int(x) > 0 for x in [likes, fans, follows])
                         
                         if all_greater_than_zero:
+                            # 确保data目录存在
+                            data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+                            os.makedirs(data_dir, exist_ok=True)
+                            
+                            # 构建CSV文件路径
+                            csv_file = os.path.join(data_dir, 'toutiao_stats.csv')
+                            
                             # 检查文件是否存在
-                            file_exists = os.path.isfile('toutiao_stats.csv')
+                            file_exists = os.path.isfile(csv_file)
                             
                             # 将数据保存到CSV文件
-                            with open('toutiao_stats.csv', 'a', encoding='utf-8') as f:
+                            with open(csv_file, 'a', encoding='utf-8') as f:
                                 if not file_exists:
                                     f.write("更新时间,获赞数,粉丝数,关注数\n")
                                 f.write(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')},{likes},{fans},{follows}\n")
                             
-                            print(f"\n数据已通过JS方法获取并保存到 {os.path.abspath('toutiao_stats.csv')}")
+                            print(f"\n数据已通过JS方法获取并保存到 {os.path.abspath(csv_file)}")
                             
                             # 标记数据为完整
                             data_complete = True
@@ -248,42 +262,75 @@ def parse_toutiao_user_stats(url: str, page=None):
                             print("\n通过JS获取的数据中有项为0，未保存到CSV文件。所有数据项必须大于0才能保存。")
                     else:
                         if js_likes:
-                            print(f"从JS中找到获赞数: {js_likes}")
+                            print(f"获赞数: {js_likes}")
+                        else:
+                            print("未找到获赞数")
+                            
                         if js_fans:
-                            print(f"从JS中找到粉丝数: {js_fans}")
+                            print(f"粉丝数: {js_fans}")
+                        else:
+                            print("未找到粉丝数")
+                            
                         if js_follows:
-                            print(f"从JS中找到关注数: {js_follows}")
-            except errors.ContextLostError:
-                print("执行JS提取数据时页面刷新，无法获取JS数据")
-            except Exception as e:
-                print(f"执行JS提取数据时出错: {e}")
+                            print(f"关注数: {js_follows}")
+                        else:
+                            print("未找到关注数")
+                            
+                        print("\n无法从JS中获取完整的数据")
+                else:
+                    print(f"JS执行错误或未返回有效数据: {js_user_data}")
 
+            except Exception as e:
+                print(f"从JS提取数据时出错: {e}")
+                import traceback
+                print(traceback.format_exc())
+
+        # 返回数据字典
         return {
             "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "likes": likes,
-            "fans": fans,
-            "follows": follows,
+            "likes": likes if likes != "未找到" else "0",
+            "fans": fans if fans != "未找到" else "0",
+            "follows": follows if follows != "未找到" else "0",
+            "site": "今日头条",
             "data_complete": data_complete
         }
-
     except Exception as e:
-        print(f"解析页面时出错: {e}")
+        print(f"解析头条用户数据时出错: {e}")
         import traceback
-        print("\n详细错误信息:")
         print(traceback.format_exc())
-        return None
-    finally:
-        # 只有当browser是在这个函数中创建的时候才关闭它
-        if browser_created_here:
+        
+        # 清理资源
+        if browser_created_here and page:
             try:
-                if 'page' in locals() and page:
-                    page.quit()
-                    print("浏览器已关闭！")
+                page.quit()
+                print("已关闭浏览器实例")
+            except:
+                pass
+                
+        return {
+            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "likes": "0",
+            "fans": "0",
+            "follows": "0",
+            "site": "今日头条",
+            "data_complete": False
+        }
+    finally:
+        # 清理资源
+        if browser_created_here and page:
+            try:
+                page.quit()
+                print("已关闭浏览器实例")
             except:
                 pass
 
 
 if __name__ == "__main__":
-    # 默认头条用户URL
-    default_url = "https://www.toutiao.com/c/user/token/MS4wLjABAAAAYd06xjdpZljEG3tiHeqEreoftdwWiWgqy-8K5cur014/?source=error_page&log_from=4391bdbae93908_1750259642835"
-    parse_toutiao_user_stats(default_url)
+    # 测试函数
+    toutiao_url = "https://www.toutiao.com/c/user/token/MS4wLjABAAAAaezOXkHVr0_hGmL4GwLKscbUPJUTiWw7zZZIImy3PGc/"
+    data = parse_toutiao_user_stats(toutiao_url)
+    print(f"\n[{data['timestamp']}]")
+    print(f"获赞数: {data['likes']}")
+    print(f"粉丝数: {data['fans']}")
+    print(f"关注数: {data['follows']}")
+    print(f"数据完整: {data['data_complete']}")
